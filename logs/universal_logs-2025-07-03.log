@@ -22,3 +22,13 @@
 [2025-07-03 16:13:52] INFO task-dashboard: Tasks saved successfully
 [2025-07-03 16:13:54] INFO task-dashboard: Tasks saved successfully
 [2025-07-03 16:14:24] INFO task-dashboard: Tasks loaded successfully on startup
+[2025-07-03 16:23:22] INFO task-dashboard: Tasks loaded successfully on startup
+[2025-07-03 16:24:09] INFO task-dashboard: Tasks loaded successfully on startup
+[2025-07-03 16:24:26] INFO task-dashboard: Tasks loaded successfully on startup
+[2025-07-03 16:29:33] INFO task-dashboard: Tasks loaded successfully on startup
+[2025-07-03 16:29:36] INFO task-dashboard: Task 3 moved to todo
+[2025-07-03 16:29:37] INFO task-dashboard: Task 9 moved to doing
+[2025-07-03 16:29:42] INFO task-dashboard: Task 9 moved to todo
+[2025-07-03 16:29:43] INFO task-dashboard: Task 9 moved to doing
+[2025-07-03 16:29:52] INFO task-dashboard: Task 9 moved to todo
+[2025-07-03 16:29:55] INFO task-dashboard: Task 9 moved to doing

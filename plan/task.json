@@ -18,7 +18,7 @@
   {
     "id": 3,
     "title": "Update Makefile with proper Wails commands",
-    "status": "doing",
+    "status": "todo",
     "priority": "high",
     "deps": [
       2
@@ -76,7 +76,7 @@
   {
     "id": 9,
     "title": "Add file watching for external task.json changes",
-    "status": "todo",
+    "status": "doing",
     "priority": "medium",
     "deps": [
       7,

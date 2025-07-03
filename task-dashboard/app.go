@@ -32,22 +32,41 @@ type App struct {
 
 // NewApp creates a new App application struct
 func NewApp() *App {
-	// Get the path to the task.json file
-	workDir, err := os.Getwd()
+	// Get the user's home directory for a more reliable path
+	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		log.Printf("Error getting working directory: %v", err)
-		workDir = "."
+		log.Printf("Error getting home directory: %v", err)
+		homeDir = "."
 	}
 	
-	// Look for plan/task.json in parent directories
-	taskFile := filepath.Join(workDir, "..", "plan", "task.json")
-	if _, err := os.Stat(taskFile); os.IsNotExist(err) {
-		// Try current directory
-		taskFile = filepath.Join(workDir, "plan", "task.json")
-		if _, err := os.Stat(taskFile); os.IsNotExist(err) {
-			// Default to relative path
-			taskFile = "../plan/task.json"
+	// Try multiple possible locations for the task.json file
+	possiblePaths := []string{
+		// Try the project directory in repos
+		filepath.Join(homeDir, "repos", "cc_task_dash", "plan", "task.json"),
+		// Try current working directory
+		filepath.Join(".", "plan", "task.json"),
+		// Try parent directory
+		filepath.Join("..", "plan", "task.json"),
+		// Try relative to executable
+		filepath.Join("../../plan", "task.json"),
+		// Fallback: create in user documents
+		filepath.Join(homeDir, "Documents", "TaskDashboard", "task.json"),
+	}
+	
+	var taskFile string
+	found := false
+	
+	for _, path := range possiblePaths {
+		if _, err := os.Stat(path); err == nil {
+			taskFile = path
+			found = true
+			break
 		}
+	}
+	
+	// If no existing file found, use the Documents fallback
+	if !found {
+		taskFile = filepath.Join(homeDir, "Documents", "TaskDashboard", "task.json")
 	}
 
 	app := &App{
@@ -281,8 +300,18 @@ func (a *App) logToFile(level, message string) {
 	now := time.Now()
 	logDate := now.Format("2006-01-02")
 	
-	// Construct log file path
-	logDir := filepath.Join(filepath.Dir(a.taskFile), "..", "logs")
+	// Try to find the logs directory in the same structure as task file
+	var logDir string
+	taskDir := filepath.Dir(a.taskFile)
+	
+	// If task file is in a "plan" directory, logs should be sibling to plan
+	if filepath.Base(taskDir) == "plan" {
+		logDir = filepath.Join(filepath.Dir(taskDir), "logs")
+	} else {
+		// Otherwise, create logs next to task file
+		logDir = filepath.Join(taskDir, "logs")
+	}
+	
 	logFile := filepath.Join(logDir, "universal_logs-"+logDate+".log")
 	
 	// Ensure log directory exists
