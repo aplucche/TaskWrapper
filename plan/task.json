@@ -1,3 +1,22 @@
 [
-  { "id":1, "title":"Assess if plan.md provides enough detail to get started. If not iteratively build with user", "status":"todo", "priority":"high", "deps":[], "parent":null }
+  { "id": 1, "title": "Update planning documents with task dashboard project details", "status": "done", "priority": "high", "deps": [], "parent": null },
+  { "id": 2, "title": "Initialize Wails project with React TypeScript template", "status": "done", "priority": "high", "deps": [], "parent": null },
+  { "id": 3, "title": "Update Makefile with proper Wails commands", "status": "done", "priority": "high", "deps": [2], "parent": null },
+  { "id": 4, "title": "Install UI dependencies (Tailwind, Headless UI, Framer Motion)", "status": "doing", "priority": "high", "deps": [2], "parent": null },
+  { "id": 5, "title": "Configure Tailwind CSS and PostCSS", "status": "todo", "priority": "high", "deps": [4], "parent": null },
+  { "id": 6, "title": "Create Go backend API for task management", "status": "todo", "priority": "high", "deps": [], "parent": null },
+  { "id": 7, "title": "Implement LoadTasks() function to read plan/task.json", "status": "todo", "priority": "high", "deps": [6], "parent": 6 },
+  { "id": 8, "title": "Implement SaveTasks() function with atomic operations", "status": "todo", "priority": "high", "deps": [6], "parent": 6 },
+  { "id": 9, "title": "Add file watching for external task.json changes", "status": "todo", "priority": "medium", "deps": [7, 8], "parent": 6 },
+  { "id": 10, "title": "Integrate with universal logging system", "status": "todo", "priority": "medium", "deps": [6], "parent": 6 },
+  { "id": 11, "title": "Build React kanban board component architecture", "status": "todo", "priority": "high", "deps": [5], "parent": null },
+  { "id": 12, "title": "Create KanbanBoard main component", "status": "todo", "priority": "high", "deps": [11], "parent": 11 },
+  { "id": 13, "title": "Create Column components (To Do, In Progress, Done)", "status": "todo", "priority": "high", "deps": [11], "parent": 11 },
+  { "id": 14, "title": "Create TaskCard component with modern styling", "status": "todo", "priority": "high", "deps": [11], "parent": 11 },
+  { "id": 15, "title": "Implement drag & drop functionality", "status": "todo", "priority": "medium", "deps": [12, 13, 14], "parent": null },
+  { "id": 16, "title": "Add task editing and creation UI", "status": "todo", "priority": "medium", "deps": [14], "parent": null },
+  { "id": 17, "title": "Implement animations and visual feedback", "status": "todo", "priority": "medium", "deps": [15], "parent": null },
+  { "id": 18, "title": "Test web mode and Playwright compatibility", "status": "todo", "priority": "medium", "deps": [11], "parent": null },
+  { "id": 19, "title": "Build and test single executable", "status": "todo", "priority": "low", "deps": [15, 16], "parent": null },
+  { "id": 20, "title": "Update CLAUDE.md with new architecture documentation", "status": "todo", "priority": "low", "deps": [], "parent": null }
 ]
