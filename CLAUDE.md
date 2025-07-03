@@ -1,6 +1,10 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code when working in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+This is a **Task Dashboard** project - a standalone desktop application built with Wails (Go + React + TypeScript) that provides an editable kanban board interface for the project's task.json file. The application serves as a visual task management dashboard with drag-and-drop functionality and modern aesthetic design.
 
 ### Planning
 Planning and project tracking can be found in the /plan directory. plan.md and task.md are important - use frequently to steer the project. Build simple reusable project specific tools as needed. If plan.md is not sufficiently complete insist on iteratively building it out with the user. Routinely revisit plan.md to populate task.json. Expand complex tasks into subtasks.
@@ -40,9 +44,69 @@ logs/
 - Test extensively and intelligently, prune ununsed code aggressively.
 
 
-### Project level commands (Makefile)
-- Important project wide commands should tie to the Makefile for test, run and build as appropriate
-- E.g. if `npm run dev` is used it should be triggerable from the Makefile
+## Task Dashboard Application
+
+### Architecture
+- **Backend**: Go with Wails framework for desktop integration
+- **Frontend**: React 18 + TypeScript + Vite
+- **UI Framework**: Tailwind CSS, Headless UI, Framer Motion
+- **Drag & Drop**: @hello-pangea/dnd
+- **Icons**: Lucide React, Heroicons
+
+### Key Files and Directories
+```
+task-dashboard/
+├── main.go                      # Wails app entry point
+├── app.go                       # Go backend API (LoadTasks, SaveTasks, etc.)
+├── frontend/
+│   ├── src/
+│   │   ├── App.tsx              # Main React component
+│   │   ├── components/          # Kanban board components
+│   │   │   ├── KanbanBoard.tsx  # Main board component
+│   │   │   ├── Column.tsx       # Kanban columns
+│   │   │   ├── TaskCard.tsx     # Individual task cards
+│   │   │   └── Header.tsx       # App header
+│   │   └── types/task.ts        # TypeScript definitions
+│   ├── wailsjs/                 # Auto-generated Wails bindings
+│   └── package.json
+├── build/bin/                   # Built executables
+│   └── task-dashboard.app       # macOS app bundle
+└── wails.json                   # Wails configuration
+```
+
+### Development Commands (Makefile)
+All commands use the Makefile for consistency:
+
+```bash
+make help      # List all available commands
+make install   # Install frontend dependencies
+make dev       # Start development mode (desktop + web at localhost:5173)
+make build     # Build production executable
+make test      # Run tests
+make run       # Run built executable
+make web       # Show web testing information
+make logs      # View application logs
+```
+
+### Data Flow
+1. Go backend reads `plan/task.json` on startup
+2. React frontend displays tasks as kanban columns (To Do, In Progress, Done)
+3. User interactions (drag/drop, edit) trigger Go API calls
+4. Changes saved atomically to `plan/task.json` with backup
+5. All operations logged to `logs/universal_logs-*.log`
+
+### Web Testing
+- **Development**: `make dev` serves both desktop app and web version
+- **Web URL**: `http://localhost:5173/` (Vite dev server)
+- **Playwright Testing**: Target the web URL for automated testing
+
+### Building and Distribution
+- **Single Executable**: `make build` creates `task-dashboard.app` (8.1MB)
+- **Platform**: macOS (darwin/arm64) optimized for Apple Silicon
+- **Dependencies**: All assets embedded, no external requirements
+
+### Project Level Commands (Makefile)
+The Makefile provides all essential commands for development and deployment. All Wails-specific commands are properly configured with PATH handling for Go and Node.js.
 
 ### Language and Tool Specific
 - **[python]** only use uv, never pip

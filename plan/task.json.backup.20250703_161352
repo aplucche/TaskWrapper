@@ -179,7 +179,7 @@
   {
     "id": 19,
     "title": "Build and test single executable",
-    "status": "done",
+    "status": "todo",
     "priority": "low",
     "deps": [
       15,
@@ -190,7 +190,7 @@
   {
     "id": 20,
     "title": "Update CLAUDE.md with new architecture documentation",
-    "status": "done",
+    "status": "todo",
     "priority": "low",
     "deps": [],
     "parent": null
@@ -234,5 +234,21 @@
       12
     ],
     "parent": 12
+  },
+  {
+    "id": 25,
+    "title": "Test!",
+    "status": "todo",
+    "priority": "low",
+    "deps": [],
+    "parent": null
+  },
+  {
+    "id": 26,
+    "title": "Treststat",
+    "status": "todo",
+    "priority": "medium",
+    "deps": [],
+    "parent": null
   }
 ]

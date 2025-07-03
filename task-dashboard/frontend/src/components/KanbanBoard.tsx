@@ -92,7 +92,7 @@ const KanbanBoard: React.FC = () => {
       status,
       priority: 'medium',
       deps: [],
-      parent: null,
+      parent: undefined, // Wails uses undefined instead of null
     };
 
     const updatedTasks = [...tasks, newTask];
