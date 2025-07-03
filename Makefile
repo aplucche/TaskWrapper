@@ -12,7 +12,7 @@ help:   ## list targets
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN{FS="[:#]"}{printf "%-12s %s\n", $$1, $$3}'
 
 install:  ## install dependencies
-	cd $(WAILS_DIR) && PATH=$(PATH_WITH_GO) npm install
+	cd $(WAILS_DIR)/frontend && npm install
 
 build:  ## compile / package wails app
 	cd $(WAILS_DIR) && PATH=$(PATH_WITH_GO) wails build

@@ -5,3 +5,23 @@
 export function Greet(arg1) {
     return window['go']['main']['App']['Greet'](arg1);
 }
+
+export function LoadTasks() {
+    return window['go']['main']['App']['LoadTasks']();
+}
+
+export function SaveTasks(arg1) {
+    return window['go']['main']['App']['SaveTasks'](arg1);
+}
+
+export function UpdateTask(arg1) {
+    return window['go']['main']['App']['UpdateTask'](arg1);
+}
+
+export function MoveTask(arg1, arg2) {
+    return window['go']['main']['App']['MoveTask'](arg1, arg2);
+}
+
+export function GetTasksByStatus(arg1) {
+    return window['go']['main']['App']['GetTasksByStatus'](arg1);
+}
