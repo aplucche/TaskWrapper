@@ -76,7 +76,7 @@
   {
     "id": 9,
     "title": "Add file watching for external task.json changes",
-    "status": "doing",
+    "status": "todo",
     "priority": "medium",
     "deps": [
       7,
@@ -159,7 +159,7 @@
   {
     "id": 17,
     "title": "Implement animations and visual feedback",
-    "status": "doing",
+    "status": "todo",
     "priority": "medium",
     "deps": [
       15
@@ -169,7 +169,7 @@
   {
     "id": 18,
     "title": "Test web mode and Playwright compatibility",
-    "status": "doing",
+    "status": "todo",
     "priority": "medium",
     "deps": [
       11
@@ -357,8 +357,16 @@
   },
   {
     "id": 37,
-    "title": "BUG: When adding a task the task title does not expand so all text is not visible.",
-    "status": "todo",
+    "title": "Unable to scroll down in app. All tasks not visible",
+    "status": "done",
+    "priority": "medium",
+    "deps": [],
+    "parent": null
+  },
+  {
+    "id": 38,
+    "title": "can we add a backlog column and status?",
+    "status": "done",
     "priority": "medium",
     "deps": [],
     "parent": null

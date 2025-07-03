@@ -6,7 +6,7 @@ import { Task } from '../types/task';
 import TaskCard from './TaskCard';
 
 interface ColumnProps {
-  status: 'todo' | 'doing' | 'done';
+  status: 'backlog' | 'todo' | 'doing' | 'done';
   title: string;
   tasks: Task[];
   onUpdateTask: (task: Task) => void;
@@ -44,6 +44,8 @@ const Column: React.FC<ColumnProps> = ({
 
   const getColumnColor = () => {
     switch (status) {
+      case 'backlog':
+        return 'bg-gray-50 border-gray-200';
       case 'todo':
         return 'bg-blue-50 border-blue-200';
       case 'doing':
@@ -57,6 +59,8 @@ const Column: React.FC<ColumnProps> = ({
 
   const getHeaderColor = () => {
     switch (status) {
+      case 'backlog':
+        return 'text-gray-700 bg-gray-100';
       case 'todo':
         return 'text-blue-700 bg-blue-100';
       case 'doing':
@@ -69,7 +73,7 @@ const Column: React.FC<ColumnProps> = ({
   };
 
   return (
-    <div className={`flex flex-col h-full rounded-lg border-2 border-dashed ${getColumnColor()}`}>
+    <div className={`flex flex-col rounded-lg border-2 border-dashed ${getColumnColor()}`}>
       {/* Column Header */}
       <div className={`px-4 py-3 rounded-t-lg ${getHeaderColor()}`}>
         <div className="flex items-center justify-between">
@@ -95,7 +99,7 @@ const Column: React.FC<ColumnProps> = ({
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className={`flex-1 p-4 space-y-3 overflow-y-auto transition-colors ${
+            className={`p-4 space-y-3 transition-colors ${
               snapshot.isDraggingOver ? 'bg-opacity-50' : ''
             }`}
           >

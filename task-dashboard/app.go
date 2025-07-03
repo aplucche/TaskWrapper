@@ -16,7 +16,7 @@ import (
 type Task struct {
 	ID       int    `json:"id"`
 	Title    string `json:"title"`
-	Status   string `json:"status"`   // "todo", "doing", "done"
+	Status   string `json:"status"`   // "backlog", "todo", "doing", "done"
 	Priority string `json:"priority"` // "high", "medium", "low"
 	Deps     []int  `json:"deps"`     // array of task IDs this task depends on
 	Parent   *int   `json:"parent"`   // parent task ID, null if top-level
@@ -112,7 +112,7 @@ func (a *App) SaveTasks(tasks []Task) error {
 		if task.Title == "" {
 			return fmt.Errorf("task with ID %d has empty title", task.ID)
 		}
-		if task.Status != "todo" && task.Status != "doing" && task.Status != "done" {
+		if task.Status != "backlog" && task.Status != "todo" && task.Status != "doing" && task.Status != "done" {
 			return fmt.Errorf("task with ID %d has invalid status: %s", task.ID, task.Status)
 		}
 		if task.Priority != "high" && task.Priority != "medium" && task.Priority != "low" {
@@ -170,7 +170,7 @@ func (a *App) UpdateTask(task Task) error {
 
 // MoveTask moves a task to a different status column
 func (a *App) MoveTask(taskID int, newStatus string) error {
-	if newStatus != "todo" && newStatus != "doing" && newStatus != "done" {
+	if newStatus != "backlog" && newStatus != "todo" && newStatus != "doing" && newStatus != "done" {
 		return fmt.Errorf("invalid status: %s", newStatus)
 	}
 	

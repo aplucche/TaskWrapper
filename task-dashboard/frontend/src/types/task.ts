@@ -3,7 +3,7 @@ export type { main as WailsTypes } from '../../wailsjs/go/models';
 export type Task = import('../../wailsjs/go/models').main.Task;
 
 export interface TaskColumn {
-  status: 'todo' | 'doing' | 'done';
+  status: 'backlog' | 'todo' | 'doing' | 'done';
   title: string;
   tasks: Task[];
 }
@@ -22,4 +22,5 @@ export const STATUS_LABELS = {
   todo: 'To Do',
   doing: 'In Progress',
   done: 'Done',
+  backlog: 'Backlog',
 } as const;

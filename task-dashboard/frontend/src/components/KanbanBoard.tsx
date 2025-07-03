@@ -57,7 +57,7 @@ const KanbanBoard: React.FC = () => {
     }
 
     const taskId = parseInt(draggableId);
-    const newStatus = destination.droppableId as 'todo' | 'doing' | 'done';
+    const newStatus = destination.droppableId as 'backlog' | 'todo' | 'doing' | 'done';
 
     try {
       // Update task status via backend
@@ -84,7 +84,7 @@ const KanbanBoard: React.FC = () => {
     await saveTasks(updatedTasks);
   };
 
-  const createTask = async (title: string, status: 'todo' | 'doing' | 'done' = 'todo') => {
+  const createTask = async (title: string, status: 'backlog' | 'todo' | 'doing' | 'done' = 'todo') => {
     const maxId = tasks.reduce((max, task) => Math.max(max, task.id), 0);
     const newTask: Task = {
       id: maxId + 1,
@@ -106,6 +106,7 @@ const KanbanBoard: React.FC = () => {
 
   // Group tasks by status
   const tasksByStatus = {
+    backlog: tasks.filter(task => task.status === 'backlog'),
     todo: tasks.filter(task => task.status === 'todo'),
     doing: tasks.filter(task => task.status === 'doing'),
     done: tasks.filter(task => task.status === 'done'),
@@ -133,18 +134,18 @@ const KanbanBoard: React.FC = () => {
         onCreateTask={createTask}
       />
       
-      <main className="flex-1 p-6 overflow-hidden">
+      <main className="flex-1 p-6 overflow-auto">
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="grid grid-cols-3 gap-6 h-full">
+          <div className="grid grid-cols-4 gap-6 min-h-full">
             {Object.entries(STATUS_LABELS).map(([status, label]) => (
               <Column
                 key={status}
-                status={status as 'todo' | 'doing' | 'done'}
+                status={status as 'backlog' | 'todo' | 'doing' | 'done'}
                 title={label}
                 tasks={tasksByStatus[status as keyof typeof tasksByStatus]}
                 onUpdateTask={updateTask}
                 onDeleteTask={deleteTask}
-                onCreateTask={(title) => createTask(title, status as 'todo' | 'doing' | 'done')}
+                onCreateTask={(title) => createTask(title, status as 'backlog' | 'todo' | 'doing' | 'done')}
               />
             ))}
           </div>
