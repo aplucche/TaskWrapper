@@ -14,6 +14,25 @@ interface ColumnProps {
   onCreateTask: (title: string) => void;
 }
 
+const STATUS_STYLES = {
+  backlog: {
+    column: 'bg-gray-50 border-gray-200',
+    header: 'text-gray-700 bg-gray-100',
+  },
+  todo: {
+    column: 'bg-blue-50 border-blue-200',
+    header: 'text-blue-700 bg-blue-100',
+  },
+  doing: {
+    column: 'bg-yellow-50 border-yellow-200',
+    header: 'text-yellow-700 bg-yellow-100',
+  },
+  done: {
+    column: 'bg-green-50 border-green-200',
+    header: 'text-green-700 bg-green-100',
+  },
+};
+
 const Column: React.FC<ColumnProps> = ({
   status,
   title,
@@ -42,40 +61,12 @@ const Column: React.FC<ColumnProps> = ({
     }
   };
 
-  const getColumnColor = () => {
-    switch (status) {
-      case 'backlog':
-        return 'bg-gray-50 border-gray-200';
-      case 'todo':
-        return 'bg-blue-50 border-blue-200';
-      case 'doing':
-        return 'bg-yellow-50 border-yellow-200';
-      case 'done':
-        return 'bg-green-50 border-green-200';
-      default:
-        return 'bg-gray-50 border-gray-200';
-    }
-  };
-
-  const getHeaderColor = () => {
-    switch (status) {
-      case 'backlog':
-        return 'text-gray-700 bg-gray-100';
-      case 'todo':
-        return 'text-blue-700 bg-blue-100';
-      case 'doing':
-        return 'text-yellow-700 bg-yellow-100';
-      case 'done':
-        return 'text-green-700 bg-green-100';
-      default:
-        return 'text-gray-700 bg-gray-100';
-    }
-  };
+  const styles = STATUS_STYLES[status] || STATUS_STYLES.backlog;
 
   return (
-    <div className={`flex flex-col rounded-lg border-2 border-dashed ${getColumnColor()}`}>
+    <div className={`flex flex-col rounded-lg border-2 border-dashed ${styles.column}`}>
       {/* Column Header */}
-      <div className={`px-4 py-3 rounded-t-lg ${getHeaderColor()}`}>
+      <div className={`px-4 py-3 rounded-t-lg ${styles.header}`}>
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-lg">{title}</h3>
           <div className="flex items-center space-x-2">

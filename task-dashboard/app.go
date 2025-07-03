@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -90,14 +89,10 @@ func (a *App) startup(ctx context.Context) {
 	}
 }
 
-// LoadTasks reads tasks from the plan/task.json file
+// LoadTasks returns the current tasks from memory
 func (a *App) LoadTasks() ([]Task, error) {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
-	
-	if err := a.loadTasks(); err != nil {
-		return nil, err
-	}
 	
 	return a.tasks, nil
 }
@@ -108,31 +103,18 @@ func (a *App) SaveTasks(tasks []Task) error {
 	defer a.mu.Unlock()
 	
 	// Validate tasks
-	for _, task := range tasks {
-		if task.Title == "" {
-			return fmt.Errorf("task with ID %d has empty title", task.ID)
-		}
-		if task.Status != "backlog" && task.Status != "todo" && task.Status != "doing" && task.Status != "done" {
-			return fmt.Errorf("task with ID %d has invalid status: %s", task.ID, task.Status)
-		}
-		if task.Priority != "high" && task.Priority != "medium" && task.Priority != "low" {
-			return fmt.Errorf("task with ID %d has invalid priority: %s", task.ID, task.Priority)
-		}
-	}
-	
-	// Create backup
-	if err := a.createBackup(); err != nil {
-		a.logError("Failed to create backup", err)
-		// Continue anyway
-	}
-	
-	// Atomic write
-	if err := a.atomicWriteTasks(tasks); err != nil {
+	if err := a.validateTasks(tasks); err != nil {
 		return err
 	}
 	
+	// Update in-memory tasks
 	a.tasks = tasks
-	a.logInfo("Tasks saved successfully")
+	
+	// Save to disk
+	if err := a.saveTasks(); err != nil {
+		return err
+	}
+	
 	return nil
 }
 
@@ -141,7 +123,8 @@ func (a *App) UpdateTask(task Task) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	
-	if err := a.loadTasks(); err != nil {
+	// Validate single task
+	if err := a.validateTasks([]Task{task}); err != nil {
 		return err
 	}
 	
@@ -160,7 +143,7 @@ func (a *App) UpdateTask(task Task) error {
 	}
 	
 	// Save updated tasks
-	if err := a.atomicWriteTasks(a.tasks); err != nil {
+	if err := a.saveTasks(); err != nil {
 		return err
 	}
 	
@@ -177,10 +160,6 @@ func (a *App) MoveTask(taskID int, newStatus string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	
-	if err := a.loadTasks(); err != nil {
-		return err
-	}
-	
 	// Find and update the task status
 	found := false
 	for i, task := range a.tasks {
@@ -196,7 +175,7 @@ func (a *App) MoveTask(taskID int, newStatus string) error {
 	}
 	
 	// Save updated tasks
-	if err := a.atomicWriteTasks(a.tasks); err != nil {
+	if err := a.saveTasks(); err != nil {
 		return err
 	}
 	
@@ -208,10 +187,6 @@ func (a *App) MoveTask(taskID int, newStatus string) error {
 func (a *App) GetTasksByStatus(status string) ([]Task, error) {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
-	
-	if err := a.loadTasks(); err != nil {
-		return nil, err
-	}
 	
 	var filtered []Task
 	for _, task := range a.tasks {
@@ -226,7 +201,7 @@ func (a *App) GetTasksByStatus(status string) ([]Task, error) {
 // Private helper methods
 
 func (a *App) loadTasks() error {
-	data, err := ioutil.ReadFile(a.taskFile)
+	data, err := os.ReadFile(a.taskFile)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// Create empty task file
@@ -240,6 +215,39 @@ func (a *App) loadTasks() error {
 		return fmt.Errorf("failed to parse task file: %v", err)
 	}
 	
+	return nil
+}
+
+// validateTasks validates a slice of tasks
+func (a *App) validateTasks(tasks []Task) error {
+	for _, task := range tasks {
+		if task.Title == "" {
+			return fmt.Errorf("task with ID %d has empty title", task.ID)
+		}
+		if task.Status != "backlog" && task.Status != "todo" && task.Status != "doing" && task.Status != "done" {
+			return fmt.Errorf("task with ID %d has invalid status: %s", task.ID, task.Status)
+		}
+		if task.Priority != "high" && task.Priority != "medium" && task.Priority != "low" {
+			return fmt.Errorf("task with ID %d has invalid priority: %s", task.ID, task.Priority)
+		}
+	}
+	return nil
+}
+
+// saveTasks persists the current in-memory tasks to disk
+func (a *App) saveTasks() error {
+	// Create backup before saving
+	if err := a.createBackup(); err != nil {
+		a.logError("Failed to create backup", err)
+		return fmt.Errorf("failed to create backup: %v", err)
+	}
+	
+	// Atomic write
+	if err := a.atomicWriteTasks(a.tasks); err != nil {
+		return err
+	}
+	
+	a.logInfo("Tasks saved successfully")
 	return nil
 }
 
@@ -257,7 +265,7 @@ func (a *App) atomicWriteTasks(tasks []Task) error {
 	
 	// Write to temporary file first
 	tmpFile := a.taskFile + ".tmp"
-	if err := ioutil.WriteFile(tmpFile, data, 0644); err != nil {
+	if err := os.WriteFile(tmpFile, data, 0644); err != nil {
 		return fmt.Errorf("failed to write temporary file: %v", err)
 	}
 	
@@ -278,12 +286,12 @@ func (a *App) createBackup() error {
 	timestamp := time.Now().Format("20060102_150405")
 	backupFile := a.taskFile + ".backup." + timestamp
 	
-	data, err := ioutil.ReadFile(a.taskFile)
+	data, err := os.ReadFile(a.taskFile)
 	if err != nil {
 		return err
 	}
 	
-	return ioutil.WriteFile(backupFile, data, 0644)
+	return os.WriteFile(backupFile, data, 0644)
 }
 
 func (a *App) logInfo(message string) {

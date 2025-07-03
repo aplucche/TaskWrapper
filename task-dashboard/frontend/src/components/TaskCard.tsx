@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
-import { motion } from 'framer-motion';
 import { MoreVertical, Edit2, Trash2, Save, X, AlertCircle } from 'lucide-react';
 import { Menu, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
