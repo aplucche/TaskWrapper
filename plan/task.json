@@ -18,7 +18,7 @@
   {
     "id": 3,
     "title": "Update Makefile with proper Wails commands",
-    "status": "todo",
+    "status": "backlog",
     "priority": "high",
     "deps": [
       2
@@ -70,17 +70,6 @@
     "priority": "high",
     "deps": [
       6
-    ],
-    "parent": 6
-  },
-  {
-    "id": 9,
-    "title": "Add file watching for external task.json changes",
-    "status": "backlog",
-    "priority": "medium",
-    "deps": [
-      7,
-      8
     ],
     "parent": 6
   },
@@ -157,19 +146,9 @@
     "parent": null
   },
   {
-    "id": 17,
-    "title": "Implement animations and visual feedback",
-    "status": "backlog",
-    "priority": "medium",
-    "deps": [
-      15
-    ],
-    "parent": null
-  },
-  {
     "id": 18,
     "title": "Test web mode and Playwright compatibility",
-    "status": "todo",
+    "status": "done",
     "priority": "medium",
     "deps": [
       11
@@ -238,7 +217,7 @@
   {
     "id": 25,
     "title": "Add file watching for external task.json changes",
-    "status": "todo",
+    "status": "backlog",
     "priority": "medium",
     "deps": [
       6
@@ -246,19 +225,9 @@
     "parent": null
   },
   {
-    "id": 26,
-    "title": "Implement undo/redo functionality",
-    "status": "todo",
-    "priority": "high",
-    "deps": [
-      11
-    ],
-    "parent": null
-  },
-  {
     "id": 27,
     "title": "Add search and filter capabilities",
-    "status": "todo",
+    "status": "backlog",
     "priority": "high",
     "deps": [
       11
@@ -268,7 +237,7 @@
   {
     "id": 28,
     "title": "Create dark mode theme toggle",
-    "status": "todo",
+    "status": "backlog",
     "priority": "medium",
     "deps": [
       11
@@ -278,70 +247,20 @@
   {
     "id": 29,
     "title": "Add keyboard shortcuts for navigation",
-    "status": "todo",
+    "status": "backlog",
     "priority": "medium",
     "deps": [
       11
-    ],
-    "parent": null
-  },
-  {
-    "id": 30,
-    "title": "Implement bulk task operations",
-    "status": "todo",
-    "priority": "medium",
-    "deps": [
-      27
-    ],
-    "parent": null
-  },
-  {
-    "id": 31,
-    "title": "Add task time tracking functionality",
-    "status": "todo",
-    "priority": "low",
-    "deps": [
-      14
     ],
     "parent": null
   },
   {
     "id": 32,
     "title": "Create dependency visualization",
-    "status": "todo",
-    "priority": "low",
-    "deps": [
-      11
-    ],
-    "parent": null
-  },
-  {
-    "id": 33,
-    "title": "Add export options (PDF, CSV)",
-    "status": "todo",
-    "priority": "low",
-    "deps": [
-      6
-    ],
-    "parent": null
-  },
-  {
-    "id": 34,
-    "title": "Implement progress visualization charts",
-    "status": "todo",
-    "priority": "low",
-    "deps": [
-      11
-    ],
-    "parent": null
-  },
-  {
-    "id": 35,
-    "title": "Add Windows and Linux build support",
     "status": "backlog",
     "priority": "low",
     "deps": [
-      19
+      11
     ],
     "parent": null
   },
@@ -375,7 +294,39 @@
     "id": 39,
     "title": "Fix dropdown menu visibility - delete button being cut off. NOTE: Tried z-index fixes, overflow-visible, repositioning (top-full, bottom-full, fixed positioning). Issue persists - may need portal rendering or different dropdown library. Delete function works via keyboard navigation.",
     "status": "todo",
-    "priority": "medium",
+    "priority": "low",
+    "deps": [],
+    "parent": null
+  },
+  {
+    "id": 40,
+    "title": "Tech debt clean up - target hardcoded, prototype, or brittle code.",
+    "status": "todo",
+    "priority": "high",
+    "deps": [],
+    "parent": null
+  },
+  {
+    "id": 41,
+    "title": "Build testing infrastructure plan (plan before implementation)",
+    "status": "todo",
+    "priority": "high",
+    "deps": [],
+    "parent": null
+  },
+  {
+    "id": 42,
+    "title": "Investigate Sub displaying on all tasks.",
+    "status": "todo",
+    "priority": "low",
+    "deps": [],
+    "parent": null
+  },
+  {
+    "id": 43,
+    "title": "Tech debt clean up - CSS - build correct CSS abstractions to make easier to modify",
+    "status": "todo",
+    "priority": "low",
     "deps": [],
     "parent": null
   }
