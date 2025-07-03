@@ -234,5 +234,125 @@
       12
     ],
     "parent": 12
+  },
+  {
+    "id": 25,
+    "title": "Add file watching for external task.json changes",
+    "status": "todo",
+    "priority": "medium",
+    "deps": [
+      6
+    ],
+    "parent": null
+  },
+  {
+    "id": 26,
+    "title": "Implement undo/redo functionality",
+    "status": "todo",
+    "priority": "high",
+    "deps": [
+      11
+    ],
+    "parent": null
+  },
+  {
+    "id": 27,
+    "title": "Add search and filter capabilities",
+    "status": "todo",
+    "priority": "high",
+    "deps": [
+      11
+    ],
+    "parent": null
+  },
+  {
+    "id": 28,
+    "title": "Create dark mode theme toggle",
+    "status": "todo",
+    "priority": "medium",
+    "deps": [
+      11
+    ],
+    "parent": null
+  },
+  {
+    "id": 29,
+    "title": "Add keyboard shortcuts for navigation",
+    "status": "todo",
+    "priority": "medium",
+    "deps": [
+      11
+    ],
+    "parent": null
+  },
+  {
+    "id": 30,
+    "title": "Implement bulk task operations",
+    "status": "todo",
+    "priority": "medium",
+    "deps": [
+      27
+    ],
+    "parent": null
+  },
+  {
+    "id": 31,
+    "title": "Add task time tracking functionality",
+    "status": "todo",
+    "priority": "low",
+    "deps": [
+      14
+    ],
+    "parent": null
+  },
+  {
+    "id": 32,
+    "title": "Create dependency visualization",
+    "status": "todo",
+    "priority": "low",
+    "deps": [
+      11
+    ],
+    "parent": null
+  },
+  {
+    "id": 33,
+    "title": "Add export options (PDF, CSV)",
+    "status": "todo",
+    "priority": "low",
+    "deps": [
+      6
+    ],
+    "parent": null
+  },
+  {
+    "id": 34,
+    "title": "Implement progress visualization charts",
+    "status": "todo",
+    "priority": "low",
+    "deps": [
+      11
+    ],
+    "parent": null
+  },
+  {
+    "id": 35,
+    "title": "Add Windows and Linux build support",
+    "status": "todo",
+    "priority": "low",
+    "deps": [
+      19
+    ],
+    "parent": null
+  },
+  {
+    "id": 36,
+    "title": "Create comprehensive troubleshooting documentation",
+    "status": "done",
+    "priority": "medium",
+    "deps": [
+      20
+    ],
+    "parent": null
   }
 ]

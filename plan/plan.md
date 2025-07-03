@@ -77,12 +77,13 @@ task-dashboard/
 - [x] Add task priority visualization and metadata
 - [x] Implement error handling and loading states
 
-### Phase 4: Polish & Testing (In Progress)
+### Phase 4: Polish & Testing ✅
 - [x] Wails TypeScript bindings for Go API
-- [~] Add animations and visual feedback (basic animations done)
-- [~] Test web mode compatibility (ready for testing)
-- [ ] Verify Playwright testing capability
-- [ ] Build single executable
+- [x] Add animations and visual feedback
+- [x] Test web mode compatibility
+- [x] Verify Playwright testing capability
+- [x] Build single executable
+- [x] Fix path resolution for standalone app
 - [ ] File watching for external changes (optional enhancement)
 
 ## Risks
@@ -114,3 +115,93 @@ task-dashboard/
 - Calendar integration
 - Slack/Discord notifications
 - CI/CD pipeline integration
+
+## Troubleshooting & Debugging
+
+### Common Issues
+
+#### App Won't Open on macOS
+- **"App is damaged or incomplete"**: Run `xattr -d com.apple.quarantine path/to/task-dashboard.app`
+- **Missing executable**: Clean rebuild with `rm -rf build/ && make build`
+- **Permission denied**: Check if app bundle has proper executable permissions
+
+#### Task Loading Issues
+- **"Failed to load tasks"**: Check file paths in logs at `logs/universal_logs-*.log`
+- **Permission denied on directories**: App creates fallback in `~/Documents/TaskDashboard/`
+- **Corrupted task.json**: Check backup files with `.backup.YYYYMMDD_HHMMSS` extension
+
+#### Development Issues
+- **Frontend won't compile**: Check Node.js version (requires 15+), run `npm install` in frontend/
+- **Go compilation errors**: Verify Go 1.18+ and PATH includes `/usr/local/go/bin`
+- **Wails binding issues**: Delete `frontend/wailsjs/` and run `wails dev` to regenerate
+
+### Debugging Tools
+
+#### Logging
+- **Location**: `logs/universal_logs-YYYY-MM-DD.log`
+- **View live**: `make logs` or `tail -f logs/universal_logs-*.log`
+- **Levels**: INFO (normal operations), ERROR (failures)
+
+#### Development Commands
+```bash
+make dev          # Start with hot reload + web access
+make build        # Production build
+make test         # Run all tests
+wails doctor      # Check system requirements
+go build -v       # Test Go compilation
+npm run build     # Test frontend compilation
+```
+
+#### Web Development
+- **URL**: `http://localhost:5173/` during `make dev`
+- **Browser DevTools**: Full access to React DevTools
+- **Network inspection**: Monitor API calls to Go backend
+- **Console logging**: Frontend errors and state changes
+
+### File Locations
+
+#### Development
+- **Task file**: `plan/task.json` (in project root)
+- **Logs**: `logs/universal_logs-*.log`
+- **Backups**: `plan/task.json.backup.*`
+
+#### Standalone App
+- **Primary**: `~/repos/cc_task_dash/plan/task.json` (if exists)
+- **Fallback**: `~/Documents/TaskDashboard/task.json`
+- **Logs**: Adjacent to task file in `logs/` subdirectory
+
+## Future Enhancements
+
+### Priority Features
+- **File watching**: Auto-refresh when task.json changes externally
+- **Undo/Redo**: Task operation history with Ctrl+Z/Ctrl+Y
+- **Search & Filter**: Find tasks by title, priority, or status
+- **Bulk operations**: Select multiple tasks for batch updates
+- **Export options**: PDF reports, CSV exports, JSON backup
+
+### UI/UX Improvements
+- **Dark mode**: Toggle between light/dark themes
+- **Keyboard shortcuts**: Arrow key navigation, quick task creation
+- **Column customization**: Reorder columns, custom statuses
+- **Task templates**: Predefined task structures
+- **Progress visualization**: Charts and completion statistics
+
+### Advanced Features
+- **Time tracking**: Start/stop timers for tasks
+- **Dependencies visualization**: Graphical dependency tree
+- **Team collaboration**: Multi-user support with conflict resolution
+- **Integration APIs**: REST endpoints for external tools
+- **Custom fields**: User-defined task properties
+
+### Technical Improvements
+- **Database backend**: Optional SQLite/PostgreSQL support
+- **Sync services**: Cloud backup (iCloud, Dropbox, Google Drive)
+- **Plugin system**: Extensible architecture for custom features
+- **Multi-platform**: Windows and Linux builds
+- **Mobile companion**: React Native or web responsive design
+
+### Performance Optimizations
+- **Virtual scrolling**: Handle thousands of tasks efficiently
+- **Lazy loading**: Load task details on demand
+- **Caching layer**: Reduce file I/O with smart caching
+- **Compression**: Smaller app bundle with UPX compression
