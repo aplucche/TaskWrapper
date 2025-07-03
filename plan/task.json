@@ -76,7 +76,7 @@
   {
     "id": 9,
     "title": "Add file watching for external task.json changes",
-    "status": "todo",
+    "status": "backlog",
     "priority": "medium",
     "deps": [
       7,
@@ -159,7 +159,7 @@
   {
     "id": 17,
     "title": "Implement animations and visual feedback",
-    "status": "todo",
+    "status": "backlog",
     "priority": "medium",
     "deps": [
       15
@@ -338,7 +338,7 @@
   {
     "id": 35,
     "title": "Add Windows and Linux build support",
-    "status": "todo",
+    "status": "backlog",
     "priority": "low",
     "deps": [
       19
@@ -367,6 +367,14 @@
     "id": 38,
     "title": "can we add a backlog column and status?",
     "status": "done",
+    "priority": "medium",
+    "deps": [],
+    "parent": null
+  },
+  {
+    "id": 39,
+    "title": "Fix dropdown menu visibility - delete button being cut off. NOTE: Tried z-index fixes, overflow-visible, repositioning (top-full, bottom-full, fixed positioning). Issue persists - may need portal rendering or different dropdown library. Delete function works via keyboard navigation.",
+    "status": "todo",
     "priority": "medium",
     "deps": [],
     "parent": null

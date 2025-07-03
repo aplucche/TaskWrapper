@@ -1,2 +1,11 @@
 .DS_Store
 *.pyc
+
+# Task backups
+plan/task.json.backup.*
+
+# Logs
+logs/universal_logs-*.log
+
+# Build artifacts  
+task-dashboard/build/darwin/Info.dev.plist

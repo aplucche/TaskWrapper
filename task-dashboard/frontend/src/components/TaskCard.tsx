@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { motion } from 'framer-motion';
 import { MoreVertical, Edit2, Trash2, Save, X, AlertCircle } from 'lucide-react';
-import { Menu } from '@headlessui/react';
+import { Menu, Transition } from '@headlessui/react';
+import { Fragment } from 'react';
 import { Task, PRIORITY_COLORS } from '../types/task';
 
 interface TaskCardProps {
@@ -119,7 +120,16 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, index, onUpdateTask, onDelete
                         <MoreVertical className="w-4 h-4 text-gray-400" />
                       </Menu.Button>
                       
-                      <Menu.Items className="absolute right-0 z-10 mt-1 w-32 bg-white rounded-md shadow-lg border border-gray-200 focus:outline-none">
+                      <Transition
+                        as={Fragment}
+                        enter="transition ease-out duration-100"
+                        enterFrom="transform opacity-0 scale-95"
+                        enterTo="transform opacity-100 scale-100"
+                        leave="transition ease-in duration-75"
+                        leaveFrom="transform opacity-100 scale-100"
+                        leaveTo="transform opacity-0 scale-95"
+                      >
+                        <Menu.Items className="absolute right-0 top-full mt-1 z-50 w-32 bg-white rounded-md shadow-xl border border-gray-200 focus:outline-none">
                         <Menu.Item>
                           {({ active }) => (
                             <button
@@ -146,7 +156,8 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, index, onUpdateTask, onDelete
                             </button>
                           )}
                         </Menu.Item>
-                      </Menu.Items>
+                        </Menu.Items>
+                      </Transition>
                     </Menu>
                   </div>
 
