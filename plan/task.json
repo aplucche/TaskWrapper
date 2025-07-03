@@ -354,5 +354,13 @@
       20
     ],
     "parent": null
+  },
+  {
+    "id": 37,
+    "title": "BUG: When adding a task the task title does not expand so all text is not visible.",
+    "status": "todo",
+    "priority": "medium",
+    "deps": [],
+    "parent": null
   }
 ]

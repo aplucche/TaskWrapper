@@ -65,7 +65,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, index, onUpdateTask, onDelete
           } ${isSubTask ? 'ml-4 border-l-4 border-l-blue-300' : ''}`}
         >
           <div className="flex items-start justify-between">
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 overflow-hidden">
               {isEditing ? (
                 <div className="space-y-3">
                   <textarea
@@ -110,7 +110,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, index, onUpdateTask, onDelete
               ) : (
                 <>
                   <div className="flex items-start justify-between mb-2">
-                    <h4 className="text-sm font-medium text-gray-900 group-hover:text-gray-700 leading-tight">
+                    <h4 className="text-sm font-medium text-gray-900 group-hover:text-gray-700 leading-tight break-words pr-2 flex-1">
                       {task.title}
                     </h4>
                     
