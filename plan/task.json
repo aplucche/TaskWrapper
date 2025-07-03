@@ -1,0 +1,3 @@
+[
+  { "id":1, "title":"Assess if plan.md provides enough detail to get started. If not iteratively build with user", "status":"todo", "priority":"high", "deps":[], "parent":null }
+]
