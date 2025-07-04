@@ -1,15 +1,17 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { RefreshCw, Plus, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { RefreshCw, Plus, AlertCircle, CheckCircle2, EyeOff, Eye } from 'lucide-react';
 
 interface HeaderProps {
   lastSaved: Date | null;
   error: string | null;
   onRefresh: () => void;
   onCreateTask: (title: string) => void;
+  hideComplete: boolean;
+  onToggleHideComplete: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ lastSaved, error, onRefresh, onCreateTask }) => {
+const Header: React.FC<HeaderProps> = ({ lastSaved, error, onRefresh, onCreateTask, hideComplete, onToggleHideComplete }) => {
   const [isCreating, setIsCreating] = React.useState(false);
   const [newTaskTitle, setNewTaskTitle] = React.useState('');
 
@@ -77,6 +79,19 @@ const Header: React.FC<HeaderProps> = ({ lastSaved, error, onRefresh, onCreateTa
         </div>
 
         <div className="flex items-center space-x-3">
+          {/* Hide Complete Toggle */}
+          <button
+            onClick={onToggleHideComplete}
+            className={`flex items-center space-x-2 px-3 py-2 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
+              hideComplete
+                ? 'text-primary-700 bg-primary-50 border border-primary-200 hover:bg-primary-100'
+                : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            {hideComplete ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            <span>Hide Complete</span>
+          </button>
+
           {/* Quick create task */}
           {isCreating ? (
             <motion.div

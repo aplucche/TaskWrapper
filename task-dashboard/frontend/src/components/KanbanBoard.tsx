@@ -11,6 +11,7 @@ const KanbanBoard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [hideComplete, setHideComplete] = useState(false);
 
   // Load tasks on component mount
   useEffect(() => {
@@ -113,11 +114,16 @@ const KanbanBoard: React.FC = () => {
     return 0;
   });
 
+  // Filter done tasks if hideComplete is enabled (but keep pending_review)
+  const filteredDoneTasks = hideComplete 
+    ? sortedDoneTasks.filter(task => task.status === 'pending_review')
+    : sortedDoneTasks;
+
   const tasksByStatus = {
     backlog: tasks.filter(task => task.status === 'backlog'),
     todo: tasks.filter(task => task.status === 'todo'),
     doing: tasks.filter(task => task.status === 'doing'),
-    done: sortedDoneTasks,
+    done: filteredDoneTasks,
   };
 
   if (loading) {
@@ -140,6 +146,8 @@ const KanbanBoard: React.FC = () => {
         error={error} 
         onRefresh={loadTasks}
         onCreateTask={createTask}
+        hideComplete={hideComplete}
+        onToggleHideComplete={() => setHideComplete(!hideComplete)}
       />
       
       <main className="flex-1 p-6 overflow-auto">
