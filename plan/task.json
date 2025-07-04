@@ -438,5 +438,13 @@
     "priority": "medium",
     "deps": [53, 54, 55],
     "parent": 52
+  },
+  {
+    "id": 58,
+    "title": "Continue pending_review implementation - START HERE: Full automation working with todo→doing Claude agents. Need to add pending_review column to UI (5 columns total), update Go backend status validation, update React frontend, change agent prompts from 'done' to 'pending_review', and add accept/reject review actions. See plan/pending_review_design.md for complete details.",
+    "status": "todo",
+    "priority": "high",
+    "deps": [],
+    "parent": null
   }
 ]
