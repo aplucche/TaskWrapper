@@ -16,7 +16,7 @@ import (
 type Task struct {
 	ID       int    `json:"id"`
 	Title    string `json:"title"`
-	Status   string `json:"status"`   // "backlog", "todo", "doing", "done"
+	Status   string `json:"status"`   // "backlog", "todo", "doing", "pending_review", "done"
 	Priority string `json:"priority"` // "high", "medium", "low"
 	Deps     []int  `json:"deps"`     // array of task IDs this task depends on
 	Parent   *int   `json:"parent"`   // parent task ID, null if top-level
@@ -176,7 +176,7 @@ func (a *App) UpdateTask(task Task) error {
 
 // MoveTask moves a task to a different status column
 func (a *App) MoveTask(taskID int, newStatus string) error {
-	if newStatus != "backlog" && newStatus != "todo" && newStatus != "doing" && newStatus != "done" {
+	if newStatus != "backlog" && newStatus != "todo" && newStatus != "doing" && newStatus != "pending_review" && newStatus != "done" {
 		return fmt.Errorf("invalid status: %s", newStatus)
 	}
 	
@@ -256,34 +256,9 @@ func (a *App) launchClaudeAgent(task Task) {
 	a.logInfo(fmt.Sprintf("Claude agent started successfully for task #%d (PID: %d)", task.ID, cmd.Process.Pid))
 }
 
-// generateTaskPrompt creates a context-aware prompt for the Claude agent
+// generateTaskPrompt creates a minimal prompt for the Claude agent
 func (a *App) generateTaskPrompt(task Task) string {
-	basePrompt := fmt.Sprintf("Review plan.md and task.json. Begin task #%d: %s.", task.ID, task.Title)
-	
-	// Add context based on task properties
-	if task.Parent != nil {
-		basePrompt += fmt.Sprintf(" This is a subtask of #%d.", *task.Parent)
-	}
-	
-	if len(task.Deps) > 0 {
-		depStr := ""
-		for i, dep := range task.Deps {
-			if i > 0 {
-				depStr += ", "
-			}
-			depStr += fmt.Sprintf("#%d", dep)
-		}
-		basePrompt += fmt.Sprintf(" Dependencies: %s.", depStr)
-	}
-	
-	if task.Priority == "high" {
-		basePrompt += " This is a high priority task."
-	}
-	
-	// Add detailed instructions for completion and branching
-	basePrompt += fmt.Sprintf(" Update task.json status to 'done' when complete, commit to branch task_%d, then exit.", task.ID)
-	
-	return basePrompt
+	return fmt.Sprintf("Review plan.md and task.json. Begin task #%d: %s. Update task.json status to 'pending_review' when done, commit to branch task_%d.", task.ID, task.Title, task.ID)
 }
 
 // Private helper methods
@@ -312,7 +287,7 @@ func (a *App) validateTasks(tasks []Task) error {
 		if task.Title == "" {
 			return fmt.Errorf("task with ID %d has empty title", task.ID)
 		}
-		if task.Status != "backlog" && task.Status != "todo" && task.Status != "doing" && task.Status != "done" {
+		if task.Status != "backlog" && task.Status != "todo" && task.Status != "doing" && task.Status != "pending_review" && task.Status != "done" {
 			return fmt.Errorf("task with ID %d has invalid status: %s", task.ID, task.Status)
 		}
 		if task.Priority != "high" && task.Priority != "medium" && task.Priority != "low" {

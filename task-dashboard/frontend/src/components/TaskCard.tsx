@@ -12,6 +12,12 @@ interface TaskCardProps {
   onDeleteTask: (taskId: number) => void;
 }
 
+const CARD_STYLES = {
+  base: 'group bg-white rounded-lg shadow-soft border border-gray-200 p-4 hover:shadow-medium transition-all duration-200',
+  dragging: 'dragging shadow-large',
+  subTask: 'ml-4 border-l-4 border-l-blue-300',
+} as const;
+
 const TaskCard: React.FC<TaskCardProps> = ({ task, index, onUpdateTask, onDeleteTask }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
@@ -50,8 +56,8 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, index, onUpdateTask, onDelete
     return null;
   };
 
-  const hasDependencies = task.deps && task.deps.length > 0;
-  const isSubTask = task.parent !== undefined && task.parent !== null;
+  const hasDependencies = task.deps?.length > 0;
+  const isSubTask = task.parent != null;
 
   return (
     <Draggable draggableId={task.id.toString()} index={index}>
@@ -60,9 +66,9 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, index, onUpdateTask, onDelete
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
-          className={`group bg-white rounded-lg shadow-soft border border-gray-200 p-4 hover:shadow-medium transition-all duration-200 ${
-            snapshot.isDragging ? 'dragging shadow-large' : ''
-          } ${isSubTask ? 'ml-4 border-l-4 border-l-blue-300' : ''}`}
+          className={`${CARD_STYLES.base} ${
+            snapshot.isDragging ? CARD_STYLES.dragging : ''
+          } ${isSubTask ? CARD_STYLES.subTask : ''}`}
         >
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0 overflow-hidden">
@@ -109,6 +115,12 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, index, onUpdateTask, onDelete
                 </div>
               ) : (
                 <>
+                  {/* Pending Review Header */}
+                  {task.status === 'pending_review' && (
+                    <div className="mb-2 px-2 py-1 bg-purple-100 border border-purple-200 rounded text-xs text-purple-700 font-medium">
+                      🔍 Pending Review
+                    </div>
+                  )}
                   <div className="flex items-start justify-between mb-2">
                     <h4 className="text-sm font-medium text-gray-900 group-hover:text-gray-700 leading-tight break-words pr-2 flex-1">
                       {task.title}

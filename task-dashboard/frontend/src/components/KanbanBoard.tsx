@@ -104,12 +104,18 @@ const KanbanBoard: React.FC = () => {
     await saveTasks(updatedTasks);
   };
 
-  // Group tasks by status
+  // Group tasks by status (pending_review tasks appear in done column)
   const tasksByStatus = {
     backlog: tasks.filter(task => task.status === 'backlog'),
     todo: tasks.filter(task => task.status === 'todo'),
     doing: tasks.filter(task => task.status === 'doing'),
-    done: tasks.filter(task => task.status === 'done'),
+    done: tasks.filter(task => task.status === 'done' || task.status === 'pending_review')
+      .sort((a, b) => {
+        // Float pending_review tasks to the top
+        if (a.status === 'pending_review' && b.status !== 'pending_review') return -1;
+        if (b.status === 'pending_review' && a.status !== 'pending_review') return 1;
+        return 0;
+      }),
   };
 
   if (loading) {
