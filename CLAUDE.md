@@ -105,6 +105,9 @@ When an implementation becomes too complex or hits significant obstacles, use th
 - **Drag & Drop**: @hello-pangea/dnd
 - **Icons**: Lucide React, Heroicons
 
+### Enhanced Review System
+Integrated review workflow: `pending_review` tasks appear in Done column with approve/reject buttons. Approve merges `task_X` branch to main; reject deletes branch with "NOT MERGED:" prefix. Backend handles git operations with comprehensive error handling and logging.
+
 ### Key Files and Directories
 ```
 task-dashboard/
@@ -143,7 +146,7 @@ make logs      # View application logs
 ### Data Flow
 1. Go backend reads `plan/task.json` on startup
 2. React frontend displays tasks as kanban columns (To Do, In Progress, Done)
-3. User interactions (drag/drop, edit) trigger Go API calls
+3. User interactions (drag/drop, edit, approve/reject) trigger Go API calls
 4. Changes saved atomically to `plan/task.json` with backup
 5. All operations logged to `logs/universal_logs-*.log`
 
