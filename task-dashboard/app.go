@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"sync"
 	"time"
 	
+	"github.com/creack/pty"
 	"github.com/gorilla/websocket"
 	"github.com/google/uuid"
 )
@@ -32,8 +34,18 @@ type Task struct {
 type Terminal struct {
 	ID      string
 	Cmd     *exec.Cmd
+	Pty     *os.File
 	Conn    *websocket.Conn
 	Done    chan bool
+	Buffer  *TerminalBuffer
+}
+
+// TerminalBuffer stores recent terminal output for reconnection
+type TerminalBuffer struct {
+	Lines    []string
+	MaxLines int
+	MaxBytes int
+	mu       sync.Mutex
 }
 
 // TerminalMessage represents messages sent between frontend and backend
@@ -70,6 +82,7 @@ type App struct {
 	upgrader   websocket.Upgrader
 	terminals  map[string]*Terminal
 	terminalMu sync.RWMutex
+	wsStarted  sync.Once
 }
 
 // NewApp creates a new App application struct
@@ -733,12 +746,16 @@ func (a *App) parseAgentStatus(output string) AgentStatusInfo {
 
 // startWebSocketServer starts the WebSocket server for terminal sessions
 func (a *App) startWebSocketServer() {
-	http.HandleFunc("/ws/terminal/", a.handleWebSocket)
-	
-	a.logInfo("Starting WebSocket server on :8080")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		a.logError("WebSocket server failed", err)
-	}
+	a.wsStarted.Do(func() {
+		http.HandleFunc("/ws/terminal/", a.handleWebSocket)
+		
+		go func() {
+			a.logInfo("Starting WebSocket server on :8080")
+			if err := http.ListenAndServe(":8080", nil); err != nil {
+				a.logError("WebSocket server failed", err)
+			}
+		}()
+	})
 }
 
 // handleWebSocket handles WebSocket connections for terminal sessions
@@ -761,65 +778,82 @@ func (a *App) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 	
-	// Create and start terminal session
-	terminal, err := a.createTerminal(terminalID, conn)
-	if err != nil {
-		a.logError("Failed to create terminal", err)
-		return
-	}
-	
-	// Store terminal session
+	// Check if terminal already exists (reconnection)
 	a.terminalMu.Lock()
-	a.terminals[terminalID] = terminal
+	terminal, exists := a.terminals[terminalID]
+	if exists {
+		// Reconnect to existing terminal
+		terminal.Conn = conn
+		a.logInfo(fmt.Sprintf("Reconnected to existing terminal: %s", terminalID))
+		
+		// Send terminal history to reconnecting client
+		go a.sendTerminalHistory(terminal)
+	}
 	a.terminalMu.Unlock()
 	
-	// Clean up when done
-	defer func() {
-		a.terminalMu.Lock()
-		delete(a.terminals, terminalID)
-		a.terminalMu.Unlock()
-		
-		if terminal.Cmd != nil && terminal.Cmd.Process != nil {
-			terminal.Cmd.Process.Kill()
+	if !exists {
+		// Create new terminal session
+		var err error
+		terminal, err = a.createTerminal(terminalID, conn)
+		if err != nil {
+			a.logError("Failed to create terminal", err)
+			return
 		}
-	}()
+		
+		// Store terminal session
+		a.terminalMu.Lock()
+		a.terminals[terminalID] = terminal
+		a.terminalMu.Unlock()
+	}
 	
 	// Handle messages
 	a.handleTerminalMessages(terminal)
 }
 
-// createTerminal creates a new terminal process
+// createTerminal creates a new terminal process with PTY
 func (a *App) createTerminal(terminalID string, conn *websocket.Conn) (*Terminal, error) {
 	// Create a new shell process
-	var cmd *exec.Cmd
-	
-	// Use bash on Unix-like systems
-	cmd = exec.Command("/bin/bash")
+	cmd := exec.Command("/bin/bash")
 	
 	// Set environment variables
 	cmd.Env = append(os.Environ(),
 		"TERM=xterm-256color",
-		"PS1=\\u@\\h:\\w$ ",
 	)
 	
-	terminal := &Terminal{
-		ID:   terminalID,
-		Cmd:  cmd,
-		Conn: conn,
-		Done: make(chan bool),
+	// Start the command with a PTY
+	ptmx, err := pty.Start(cmd)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start terminal with PTY: %v", err)
 	}
 	
-	// Start the process
-	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("failed to start terminal process: %v", err)
+	terminal := &Terminal{
+		ID:     terminalID,
+		Cmd:    cmd,
+		Pty:    ptmx,
+		Conn:   conn,
+		Done:   make(chan bool),
+		Buffer: NewTerminalBuffer(),
 	}
 	
 	a.logInfo(fmt.Sprintf("Terminal process started for session %s (PID: %d)", terminalID, cmd.Process.Pid))
+	
+	// Start goroutine to read from PTY and send to WebSocket
+	go a.readFromPty(terminal)
+	
 	return terminal, nil
 }
 
 // handleTerminalMessages handles the message loop for a terminal session
 func (a *App) handleTerminalMessages(terminal *Terminal) {
+	defer func() {
+		// Only close the WebSocket connection, keep terminal running
+		if terminal.Conn != nil {
+			terminal.Conn.Close()
+			terminal.Conn = nil
+		}
+		a.logInfo(fmt.Sprintf("WebSocket disconnected for terminal %s, terminal continues running", terminal.ID))
+	}()
+
 	// Handle WebSocket messages
 	for {
 		var message TerminalMessage
@@ -830,20 +864,149 @@ func (a *App) handleTerminalMessages(terminal *Terminal) {
 		}
 		
 		if message.Type == "input" {
-			// Send input to terminal process (this is a simplified version)
-			// In a real implementation, you'd need proper PTY handling
-			a.logInfo(fmt.Sprintf("Received input for terminal %s: %s", terminal.ID, message.Data))
-			
-			// Echo back the input for demo purposes
-			response := TerminalMessage{
-				Type: "output",
-				Data: message.Data,
-			}
-			
-			if err := terminal.Conn.WriteJSON(response); err != nil {
-				a.logError("Failed to send terminal output", err)
+			// Write input to PTY
+			_, err := terminal.Pty.Write([]byte(message.Data))
+			if err != nil {
+				a.logError("Failed to write to PTY", err)
 				break
 			}
 		}
 	}
+}
+
+// readFromPty reads output from PTY and sends to WebSocket
+func (a *App) readFromPty(terminal *Terminal) {
+	buffer := make([]byte, 1024)
+	
+	for {
+		n, err := terminal.Pty.Read(buffer)
+		if err != nil {
+			if err == io.EOF {
+				a.logInfo(fmt.Sprintf("Terminal %s process ended", terminal.ID))
+				// Only now actually clean up the terminal since process ended
+				a.cleanupTerminal(terminal)
+			} else {
+				a.logError("Failed to read from PTY", err)
+			}
+			break
+		}
+		
+		// Store output in buffer for reconnection
+		outputData := string(buffer[:n])
+		terminal.Buffer.AddLine(outputData)
+		
+		// Send output to WebSocket if still connected
+		if terminal.Conn != nil {
+			message := TerminalMessage{
+				Type: "output",
+				Data: outputData,
+			}
+			
+			if err := terminal.Conn.WriteJSON(message); err != nil {
+				a.logError("Failed to send terminal output to WebSocket", err)
+				// Don't break here - just log and continue, WebSocket might reconnect
+				terminal.Conn = nil
+			}
+		}
+		// If no WebSocket connection, just continue reading (terminal keeps running)
+	}
+}
+
+// cleanupTerminal properly cleans up terminal resources
+func (a *App) cleanupTerminal(terminal *Terminal) {
+	a.terminalMu.Lock()
+	defer a.terminalMu.Unlock()
+	
+	if terminal.Pty != nil {
+		terminal.Pty.Close()
+	}
+	if terminal.Cmd != nil && terminal.Cmd.Process != nil {
+		terminal.Cmd.Process.Kill()
+	}
+	if terminal.Conn != nil {
+		terminal.Conn.Close()
+	}
+	
+	// Remove from active terminals map
+	delete(a.terminals, terminal.ID)
+	a.logInfo(fmt.Sprintf("Terminal %s cleaned up", terminal.ID))
+}
+
+// NewTerminalBuffer creates a new terminal buffer
+func NewTerminalBuffer() *TerminalBuffer {
+	return &TerminalBuffer{
+		Lines:    make([]string, 0, 100), // Pre-allocate capacity
+		MaxLines: 100,                    // Store last 100 lines
+		MaxBytes: 50000,                  // Limit to ~50KB of buffer data
+	}
+}
+
+// AddLine adds a line to the terminal buffer
+func (tb *TerminalBuffer) AddLine(line string) {
+	tb.mu.Lock()
+	defer tb.mu.Unlock()
+	
+	tb.Lines = append(tb.Lines, line)
+	
+	// Keep only the last MaxLines and respect MaxBytes limit
+	for len(tb.Lines) > tb.MaxLines || tb.getTotalBytes() > tb.MaxBytes {
+		if len(tb.Lines) > 0 {
+			tb.Lines = tb.Lines[1:]
+		} else {
+			break
+		}
+	}
+}
+
+// getTotalBytes calculates total bytes in buffer (must be called with lock held)
+func (tb *TerminalBuffer) getTotalBytes() int {
+	total := 0
+	for _, line := range tb.Lines {
+		total += len(line)
+	}
+	return total
+}
+
+// GetHistory returns all stored lines
+func (tb *TerminalBuffer) GetHistory() []string {
+	tb.mu.Lock()
+	defer tb.mu.Unlock()
+	
+	// Return a copy to avoid race conditions
+	history := make([]string, len(tb.Lines))
+	copy(history, tb.Lines)
+	return history
+}
+
+// sendTerminalHistory sends stored terminal history to a reconnecting client
+func (a *App) sendTerminalHistory(terminal *Terminal) {
+	if terminal.Conn == nil || terminal.Buffer == nil {
+		return
+	}
+	
+	history := terminal.Buffer.GetHistory()
+	if len(history) == 0 {
+		return
+	}
+	
+	// Send history as a special message type
+	for _, line := range history {
+		// Check if connection is still valid before each send
+		if terminal.Conn == nil {
+			break
+		}
+		
+		message := TerminalMessage{
+			Type: "history",
+			Data: line,
+		}
+		
+		if err := terminal.Conn.WriteJSON(message); err != nil {
+			a.logError("Failed to send terminal history", err)
+			terminal.Conn = nil
+			break
+		}
+	}
+	
+	a.logInfo(fmt.Sprintf("Sent %d lines of history to terminal %s", len(history), terminal.ID))
 }

@@ -14,13 +14,18 @@ interface TerminalMessage {
   data: string;
 }
 
+// Global terminal ID that persists across component remounts
+let globalTerminalId: string | null = null;
+
 const Terminal: React.FC<TerminalProps> = ({ className = '' }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerminal | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const connectTimeoutRef = useRef<number | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [terminalId, setTerminalId] = useState<string>('');
+  const [connectionState, setConnectionState] = useState<'disconnected' | 'connecting' | 'connected' | 'restoring'>('disconnected');
 
   // Debounce helper
   const debounce = (func: () => void, wait: number) => {
@@ -33,6 +38,8 @@ const Terminal: React.FC<TerminalProps> = ({ className = '' }) => {
 
   useEffect(() => {
     if (!terminalRef.current) return;
+
+    let mounted = true;
 
     // Create terminal instance
     const xterm = new XTerminal({
@@ -93,21 +100,24 @@ const Terminal: React.FC<TerminalProps> = ({ className = '' }) => {
     xtermRef.current = xterm;
     fitAddonRef.current = fitAddon;
 
-    // Start terminal session
-    startTerminalSession();
+    // Start terminal session with delay to avoid React Strict Mode double-mounting
+    if (mounted) {
+      connectTimeoutRef.current = window.setTimeout(() => {
+        if (mounted && connectionState === 'disconnected') {
+          startTerminalSession();
+        }
+      }, 200);
+    }
 
     // Handle input from terminal
     xterm.onData((data) => {
-      console.log('Terminal input data:', data);
+      if (!mounted) return;
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
         const message: TerminalMessage = {
           type: 'input',
           data: data,
         };
-        console.log('Sending to WebSocket:', message);
         wsRef.current.send(JSON.stringify(message));
-      } else {
-        console.log('WebSocket not ready, state:', wsRef.current?.readyState);
       }
     });
 
@@ -133,45 +143,102 @@ const Terminal: React.FC<TerminalProps> = ({ className = '' }) => {
 
     // Cleanup
     return () => {
+      mounted = false;
+      
+      // Clear any pending connection timeout
+      if (connectTimeoutRef.current) {
+        window.clearTimeout(connectTimeoutRef.current);
+        connectTimeoutRef.current = null;
+      }
+      
+      // Clean up event listeners
       window.removeEventListener('resize', debouncedResize);
+      
+      // Close WebSocket connection
       if (wsRef.current) {
-        wsRef.current.close();
+        try {
+          if (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING) {
+            wsRef.current.close(1000, 'Component unmounting');
+          }
+          wsRef.current = null;
+        } catch (error) {
+          console.warn('Error closing WebSocket:', error);
+        }
       }
+      
+      // Dispose terminal
       if (xtermRef.current) {
-        xtermRef.current.dispose();
+        try {
+          xtermRef.current.dispose();
+          xtermRef.current = null;
+        } catch (error) {
+          console.warn('Error disposing terminal:', error);
+        }
       }
+      
+      setConnectionState('disconnected');
     };
   }, []);
 
   const startTerminalSession = async () => {
+    // Prevent multiple concurrent connections
+    if (connectionState !== 'disconnected') {
+      return;
+    }
+    
     try {
-      // Get terminal ID from Wails backend
-      const termId = await StartTerminalSession();
-      console.log('Terminal ID received:', termId);
+      setConnectionState('connecting');
+      
+      // Reuse existing terminal ID if available, otherwise create new one
+      let termId: string;
+      if (globalTerminalId) {
+        termId = globalTerminalId;
+      } else {
+        termId = await StartTerminalSession();
+        globalTerminalId = termId;
+      }
       setTerminalId(termId);
+
+      // Close any existing WebSocket before creating new one
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
 
       // Connect to WebSocket server running on the Wails backend
       const wsUrl = `ws://localhost:8080/ws/terminal/${termId}`;
-      console.log('Connecting to WebSocket:', wsUrl);
       const ws = new WebSocket(wsUrl);
       
+      let isRestoring = false;
+      
       ws.onopen = () => {
-        console.log('WebSocket connection opened');
         setIsConnected(true);
+        // Set to restoring if this is a reconnection, connected if new
+        if (globalTerminalId === termId) {
+          setConnectionState('restoring');
+          isRestoring = true;
+        } else {
+          setConnectionState('connected');
+        }
         if (xtermRef.current) {
-          xtermRef.current.write('\r\n\x1b[32mTerminal connected!\x1b[0m\r\n');
-          xtermRef.current.write('Welcome to the integrated terminal. You can run any command including Claude CLI.\r\n');
-          // Focus the terminal when connected
           xtermRef.current.focus();
         }
       };
-
+      
       ws.onmessage = (event) => {
         try {
-          console.log('WebSocket message received:', event.data);
           const message: TerminalMessage = JSON.parse(event.data);
-          if (message.type === 'output' && xtermRef.current) {
-            xtermRef.current.write(message.data);
+          if (xtermRef.current) {
+            if (message.type === 'output') {
+              xtermRef.current.write(message.data);
+              // If we were restoring and now getting new output, restoration is complete
+              if (isRestoring) {
+                setConnectionState('connected');
+                isRestoring = false;
+              }
+            } else if (message.type === 'history') {
+              xtermRef.current.write(message.data);
+            }
           }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
@@ -180,26 +247,20 @@ const Terminal: React.FC<TerminalProps> = ({ className = '' }) => {
 
       ws.onclose = () => {
         setIsConnected(false);
-        if (xtermRef.current) {
-          xtermRef.current.write('\r\n\x1b[31mTerminal disconnected!\x1b[0m\r\n');
-        }
+        setConnectionState('disconnected');
       };
 
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
         setIsConnected(false);
-        if (xtermRef.current) {
-          xtermRef.current.write('\r\n\x1b[31mWebSocket connection failed. Terminal features will be limited.\x1b[0m\r\n');
-          xtermRef.current.write('This is a demo terminal. WebSocket server error.\r\n');
-        }
+        setConnectionState('disconnected');
       };
 
       wsRef.current = ws;
     } catch (error) {
       console.error('Error starting terminal session:', error);
-      if (xtermRef.current) {
-        xtermRef.current.write('\r\n\x1b[31mFailed to start terminal session.\x1b[0m\r\n');
-      }
+      setConnectionState('disconnected');
+      setIsConnected(false);
     }
   };
 
@@ -217,9 +278,15 @@ const Terminal: React.FC<TerminalProps> = ({ className = '' }) => {
               <span className="text-gray-300 text-sm font-mono">Terminal</span>
             </div>
             <div className="flex items-center space-x-2">
-              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <div className={`w-2 h-2 rounded-full ${
+                connectionState === 'connected' ? 'bg-green-500' : 
+                connectionState === 'connecting' ? 'bg-yellow-500' :
+                connectionState === 'restoring' ? 'bg-blue-500' : 'bg-red-500'
+              }`}></div>
               <span className="text-gray-400 text-xs">
-                {isConnected ? 'Connected' : 'Disconnected'}
+                {connectionState === 'connected' ? 'Connected' : 
+                 connectionState === 'connecting' ? 'Connecting...' :
+                 connectionState === 'restoring' ? 'Restoring...' : 'Disconnected'}
               </span>
             </div>
           </div>
