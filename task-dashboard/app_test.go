@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -307,5 +308,49 @@ func TestConcurrentAccess(t *testing.T) {
 
 	if len(tasks) != len(testTasks) {
 		t.Errorf("Task count changed during concurrent access: expected %d, got %d", len(testTasks), len(tasks))
+	}
+}
+
+// Test 9: Refresh from Disk - External file changes
+func TestRefreshFromDisk(t *testing.T) {
+	app, cleanup := setupTestApp(t)
+	defer cleanup()
+
+	// Save initial tasks
+	if err := app.SaveTasks(testTasks); err != nil {
+		t.Fatalf("SaveTasks failed: %v", err)
+	}
+
+	// Simulate external file modification by directly writing to task file
+	externalTasks := []Task{
+		{ID: 99, Title: "External Task", Status: "todo", Priority: "high", Deps: []int{}, Parent: nil},
+	}
+	
+	data, err := json.MarshalIndent(externalTasks, "", "  ")
+	if err != nil {
+		t.Fatalf("Failed to marshal external tasks: %v", err)
+	}
+	
+	if err := os.WriteFile(app.taskFile, data, 0644); err != nil {
+		t.Fatalf("Failed to write external task file: %v", err)
+	}
+
+	// LoadTasks should pick up the external changes
+	refreshedTasks, err := app.LoadTasks()
+	if err != nil {
+		t.Fatalf("LoadTasks failed: %v", err)
+	}
+
+	// Verify we got the externally modified tasks
+	if len(refreshedTasks) != 1 {
+		t.Errorf("Expected 1 task after external modification, got %d", len(refreshedTasks))
+	}
+
+	if len(refreshedTasks) > 0 && refreshedTasks[0].ID != 99 {
+		t.Errorf("Expected external task with ID 99, got ID %d", refreshedTasks[0].ID)
+	}
+
+	if len(refreshedTasks) > 0 && refreshedTasks[0].Title != "External Task" {
+		t.Errorf("Expected external task title 'External Task', got '%s'", refreshedTasks[0].Title)
 	}
 }

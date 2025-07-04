@@ -89,11 +89,33 @@ func (a *App) startup(ctx context.Context) {
 	}
 }
 
-// LoadTasks returns the current tasks from memory
+// LoadTasks reloads tasks from disk and returns them
 func (a *App) LoadTasks() ([]Task, error) {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	
+	// Reload from disk to pick up external changes
+	data, err := os.ReadFile(a.taskFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// Create empty task file
+			a.tasks = []Task{}
+			if writeErr := a.atomicWriteTasks(a.tasks); writeErr != nil {
+				a.logError("Failed to create empty task file", writeErr)
+				return a.tasks, writeErr
+			}
+		} else {
+			a.logError("Failed to read task file", err)
+			return a.tasks, fmt.Errorf("failed to read task file: %v", err)
+		}
+	} else {
+		if err := json.Unmarshal(data, &a.tasks); err != nil {
+			a.logError("Failed to parse task file", err)
+			return a.tasks, fmt.Errorf("failed to parse task file: %v", err)
+		}
+	}
+	
+	a.logInfo("Tasks reloaded successfully from disk")
 	return a.tasks, nil
 }
 
