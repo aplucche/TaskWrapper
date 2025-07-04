@@ -4,7 +4,6 @@ import { MoreVertical, Edit2, Trash2, Save, X, AlertCircle, Check } from 'lucide
 import { Menu, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { Task, PRIORITY_COLORS } from '../types/task';
-import { ApproveTask, RejectTask } from '../../wailsjs/go/main/App';
 
 interface TaskCardProps {
   task: Task;
@@ -50,7 +49,6 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, index, onUpdateTask, onDelete
     
     setIsApproving(true);
     try {
-      await ApproveTask(task.id);
       onApproveTask(task.id);
     } catch (error) {
       console.error('Failed to approve task:', error);
@@ -64,7 +62,6 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, index, onUpdateTask, onDelete
     
     setIsRejecting(true);
     try {
-      await RejectTask(task.id);
       onRejectTask(task.id);
     } catch (error) {
       console.error('Failed to reject task:', error);

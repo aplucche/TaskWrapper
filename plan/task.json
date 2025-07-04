@@ -442,8 +442,16 @@
   {
     "id": 999,
     "title": "TEST: Enhanced review system functionality",
-    "status": "pending_review",
+    "status": "done",
     "priority": "medium",
+    "deps": [],
+    "parent": null
+  },
+  {
+    "id": 998,
+    "title": "TEST: Reject functionality",
+    "status": "pending_review",
+    "priority": "low",
     "deps": [],
     "parent": null
   }
