@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DragDropContext, DropResult } from '@hello-pangea/dnd';
 import { motion } from 'framer-motion';
 import { Task, STATUS_LABELS } from '../types/task';
-import { LoadTasks, SaveTasks, MoveTask } from '../../wailsjs/go/main/App';
+import { LoadTasks, SaveTasks, MoveTask, ApproveTask, RejectTask } from '../../wailsjs/go/main/App';
 import Column from './Column';
 import Header from './Header';
 
@@ -105,6 +105,28 @@ const KanbanBoard: React.FC = () => {
     await saveTasks(updatedTasks);
   };
 
+  const approveTask = async (taskId: number) => {
+    try {
+      await ApproveTask(taskId);
+      // Reload tasks to reflect the changes
+      await loadTasks();
+    } catch (err) {
+      setError(`Failed to approve task: ${err}`);
+      console.error('Error approving task:', err);
+    }
+  };
+
+  const rejectTask = async (taskId: number) => {
+    try {
+      await RejectTask(taskId);
+      // Reload tasks to reflect the changes
+      await loadTasks();
+    } catch (err) {
+      setError(`Failed to reject task: ${err}`);
+      console.error('Error rejecting task:', err);
+    }
+  };
+
   // Group tasks by status (pending_review tasks appear in done column)
   const doneTasks = tasks.filter(task => task.status === 'done' || task.status === 'pending_review');
   const sortedDoneTasks = [...doneTasks].sort((a, b) => {
@@ -162,6 +184,8 @@ const KanbanBoard: React.FC = () => {
                 onUpdateTask={updateTask}
                 onDeleteTask={deleteTask}
                 onCreateTask={(title) => createTask(title, status as 'backlog' | 'todo' | 'doing' | 'done')}
+                onApproveTask={approveTask}
+                onRejectTask={rejectTask}
               />
             ))}
           </div>

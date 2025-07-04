@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -262,6 +263,122 @@ func (a *App) launchClaudeAgent(task Task) {
 // generateTaskPrompt creates a minimal prompt for the Claude agent
 func (a *App) generateTaskPrompt(task Task) string {
 	return fmt.Sprintf("Review plan.md and task.json. Begin task #%d: %s. Update task.json status to 'pending_review' when done, commit to branch task_%d.", task.ID, task.Title, task.ID)
+}
+
+// ApproveTask merges the task branch and marks task as done
+func (a *App) ApproveTask(taskID int) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	
+	// Find the task
+	taskIndex := -1
+	for i, task := range a.tasks {
+		if task.ID == taskID {
+			if task.Status != "pending_review" {
+				return fmt.Errorf("task %d is not in pending_review status", taskID)
+			}
+			taskIndex = i
+			break
+		}
+	}
+	
+	if taskIndex == -1 {
+		return fmt.Errorf("task with ID %d not found", taskID)
+	}
+	
+	task := a.tasks[taskIndex]
+	projectRoot := filepath.Dir(filepath.Dir(a.taskFile))
+	branchName := fmt.Sprintf("task_%d", task.ID)
+	
+	a.logInfo(fmt.Sprintf("Approving task #%d: merging branch %s", task.ID, branchName))
+	
+	// Check if branch exists
+	checkCmd := exec.Command("git", "branch", "--list", branchName)
+	checkCmd.Dir = projectRoot
+	checkOutput, err := checkCmd.CombinedOutput()
+	if err != nil || len(strings.TrimSpace(string(checkOutput))) == 0 {
+		a.logError(fmt.Sprintf("Branch %s not found for task #%d", branchName, task.ID), fmt.Errorf("branch not found"))
+		return fmt.Errorf("branch %s not found", branchName)
+	}
+	
+	// Merge the branch
+	mergeCmd := exec.Command("git", "merge", branchName, "--no-ff", "-m", 
+		fmt.Sprintf("Merge task #%d: %s", task.ID, task.Title))
+	mergeCmd.Dir = projectRoot
+	mergeOutput, err := mergeCmd.CombinedOutput()
+	if err != nil {
+		a.logError(fmt.Sprintf("Failed to merge branch %s: %s", branchName, string(mergeOutput)), err)
+		return fmt.Errorf("merge failed: %v - %s", err, string(mergeOutput))
+	}
+	
+	// Delete the branch after successful merge
+	deleteCmd := exec.Command("git", "branch", "-d", branchName)
+	deleteCmd.Dir = projectRoot
+	deleteOutput, err := deleteCmd.CombinedOutput()
+	if err != nil {
+		a.logInfo(fmt.Sprintf("Warning: Failed to delete branch %s: %s", branchName, string(deleteOutput)))
+	}
+	
+	// Update task status to done
+	a.tasks[taskIndex].Status = "done"
+	
+	// Save tasks
+	if err := a.saveTasks(); err != nil {
+		return fmt.Errorf("failed to save tasks after approval: %v", err)
+	}
+	
+	a.logInfo(fmt.Sprintf("Task #%d approved and merged successfully", task.ID))
+	return nil
+}
+
+// RejectTask deletes the task branch and marks task as done with NOT MERGED prefix
+func (a *App) RejectTask(taskID int) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	
+	// Find the task
+	taskIndex := -1
+	for i, task := range a.tasks {
+		if task.ID == taskID {
+			if task.Status != "pending_review" {
+				return fmt.Errorf("task %d is not in pending_review status", taskID)
+			}
+			taskIndex = i
+			break
+		}
+	}
+	
+	if taskIndex == -1 {
+		return fmt.Errorf("task with ID %d not found", taskID)
+	}
+	
+	task := a.tasks[taskIndex]
+	projectRoot := filepath.Dir(filepath.Dir(a.taskFile))
+	branchName := fmt.Sprintf("task_%d", task.ID)
+	
+	a.logInfo(fmt.Sprintf("Rejecting task #%d: deleting branch %s", task.ID, branchName))
+	
+	// Delete the branch (force delete to ensure it's removed even if not merged)
+	deleteCmd := exec.Command("git", "branch", "-D", branchName)
+	deleteCmd.Dir = projectRoot
+	deleteOutput, err := deleteCmd.CombinedOutput()
+	if err != nil {
+		a.logInfo(fmt.Sprintf("Warning: Failed to delete branch %s: %s", branchName, string(deleteOutput)))
+	}
+	
+	// Update task with NOT MERGED prefix and done status
+	if !strings.HasPrefix(task.Title, "NOT MERGED: ") {
+		a.tasks[taskIndex].Title = "NOT MERGED: " + task.Title
+	}
+	a.tasks[taskIndex].Status = "done"
+	
+	// Save tasks
+	if err := a.saveTasks(); err != nil {
+		return fmt.Errorf("failed to save tasks after rejection: %v", err)
+	}
+	
+	a.logInfo(fmt.Sprintf("Task #%d rejected and branch deleted", task.ID))
+	return nil
 }
 
 // Private helper methods

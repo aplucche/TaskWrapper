@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
-import { MoreVertical, Edit2, Trash2, Save, X, AlertCircle } from 'lucide-react';
+import { MoreVertical, Edit2, Trash2, Save, X, AlertCircle, Check } from 'lucide-react';
 import { Menu, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { Task, PRIORITY_COLORS } from '../types/task';
+import { ApproveTask, RejectTask } from '../../wailsjs/go/main/App';
 
 interface TaskCardProps {
   task: Task;
   index: number;
   onUpdateTask: (task: Task) => void;
   onDeleteTask: (taskId: number) => void;
+  onApproveTask?: (taskId: number) => void;
+  onRejectTask?: (taskId: number) => void;
 }
 
 const CARD_STYLES = {
@@ -18,10 +21,12 @@ const CARD_STYLES = {
   subTask: 'ml-4 border-l-4 border-l-blue-300',
 } as const;
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, index, onUpdateTask, onDeleteTask }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ task, index, onUpdateTask, onDeleteTask, onApproveTask, onRejectTask }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
   const [editPriority, setEditPriority] = useState(task.priority);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
 
   const handleSave = () => {
     if (editTitle.trim()) {
@@ -38,6 +43,34 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, index, onUpdateTask, onDelete
     setEditTitle(task.title);
     setEditPriority(task.priority);
     setIsEditing(false);
+  };
+
+  const handleApprove = async () => {
+    if (isApproving || !onApproveTask) return;
+    
+    setIsApproving(true);
+    try {
+      await ApproveTask(task.id);
+      onApproveTask(task.id);
+    } catch (error) {
+      console.error('Failed to approve task:', error);
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (isRejecting || !onRejectTask) return;
+    
+    setIsRejecting(true);
+    try {
+      await RejectTask(task.id);
+      onRejectTask(task.id);
+    } catch (error) {
+      console.error('Failed to reject task:', error);
+    } finally {
+      setIsRejecting(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -117,8 +150,31 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, index, onUpdateTask, onDelete
                 <>
                   {/* Pending Review Header */}
                   {task.status === 'pending_review' && (
-                    <div className="mb-2 px-2 py-1 bg-purple-100 border border-purple-200 rounded text-xs text-purple-700 font-medium">
-                      🔍 Pending Review
+                    <div className="mb-2 space-y-2">
+                      <div className="px-2 py-1 bg-purple-100 border border-purple-200 rounded text-xs text-purple-700 font-medium">
+                        🔍 Pending Review
+                      </div>
+                      {/* Approve/Reject Buttons */}
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={handleApprove}
+                          disabled={isApproving || isRejecting}
+                          className="flex-1 flex items-center justify-center space-x-1 px-2 py-1 bg-green-100 hover:bg-green-200 border border-green-300 rounded text-xs text-green-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Approve task - merge branch and mark as done"
+                        >
+                          <Check className="w-3 h-3" />
+                          <span>{isApproving ? 'Approving...' : 'Approve'}</span>
+                        </button>
+                        <button
+                          onClick={handleReject}
+                          disabled={isApproving || isRejecting}
+                          className="flex-1 flex items-center justify-center space-x-1 px-2 py-1 bg-red-100 hover:bg-red-200 border border-red-300 rounded text-xs text-red-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Reject task - delete branch and mark as not merged"
+                        >
+                          <X className="w-3 h-3" />
+                          <span>{isRejecting ? 'Rejecting...' : 'Reject'}</span>
+                        </button>
+                      </div>
                     </div>
                   )}
                   <div className="flex items-start justify-between mb-2">

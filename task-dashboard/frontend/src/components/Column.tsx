@@ -12,6 +12,8 @@ interface ColumnProps {
   onUpdateTask: (task: Task) => void;
   onDeleteTask: (taskId: number) => void;
   onCreateTask: (title: string) => void;
+  onApproveTask?: (taskId: number) => void;
+  onRejectTask?: (taskId: number) => void;
 }
 
 const STATUS_STYLES = {
@@ -40,6 +42,8 @@ const Column: React.FC<ColumnProps> = ({
   onUpdateTask,
   onDeleteTask,
   onCreateTask,
+  onApproveTask,
+  onRejectTask,
 }) => {
   const [isCreating, setIsCreating] = React.useState(false);
   const [newTaskTitle, setNewTaskTitle] = React.useState('');
@@ -145,6 +149,8 @@ const Column: React.FC<ColumnProps> = ({
                 index={index}
                 onUpdateTask={onUpdateTask}
                 onDeleteTask={onDeleteTask}
+                onApproveTask={onApproveTask}
+                onRejectTask={onRejectTask}
               />
             ))}
 

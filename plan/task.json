@@ -438,5 +438,13 @@
     "priority": "medium",
     "deps": [],
     "parent": null
+  },
+  {
+    "id": 999,
+    "title": "TEST: Enhanced review system functionality",
+    "status": "pending_review",
+    "priority": "medium",
+    "deps": [],
+    "parent": null
   }
 ]
