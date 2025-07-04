@@ -408,14 +408,6 @@
     "parent": 52
   },
   {
-    "id": 58,
-    "title": "Continue pending_review implementation - START HERE: Full automation working with todo→doing Claude agents. Need to add pending_review column to UI (5 columns total), update Go backend status validation, update React frontend, change agent prompts from 'done' to 'pending_review', and add accept/reject review actions. See plan/pending_review_design.md for complete details.",
-    "status": "todo",
-    "priority": "high",
-    "deps": [],
-    "parent": null
-  },
-  {
     "id": 59,
     "title": "Add \"Hide Complete\" toggle to top bar of UI that hides done tasks.  It does not hide \"pending review\" status.",
     "status": "done",
@@ -436,6 +428,14 @@
     "title": "Add a README.md file to the project.  Use gemini to give a project wide summary and playwright mcp for screenshots.  Keep it matter of fact, but hit on any innovations or interesting parts of the repo.  Keep brief - fewer high impact lines",
     "status": "done",
     "priority": "medium",
+    "deps": [],
+    "parent": null
+  },
+  {
+    "id": 63,
+    "title": "Upgrade critical dependencies - security vulnerabilities in Vite/React/TypeScript",
+    "status": "todo",
+    "priority": "high",
     "deps": [],
     "parent": null
   }
