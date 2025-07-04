@@ -329,5 +329,66 @@
     "priority": "low",
     "deps": [],
     "parent": null
+  },
+  {
+    "id": 44,
+    "title": "Document testing strategy and approach",
+    "status": "todo",
+    "priority": "high",
+    "deps": [],
+    "parent": 41
+  },
+  {
+    "id": 45,
+    "title": "Assess current toolchain for testing compatibility",
+    "status": "todo",
+    "priority": "high",
+    "deps": [],
+    "parent": 41
+  },
+  {
+    "id": 46,
+    "title": "Implement Go backend test suite",
+    "status": "todo",
+    "priority": "high",
+    "deps": [],
+    "parent": 41
+  },
+  {
+    "id": 47,
+    "title": "Setup Playwright E2E infrastructure",
+    "status": "todo",
+    "priority": "medium",
+    "deps": [],
+    "parent": 41
+  },
+  {
+    "id": 48,
+    "title": "Implement core E2E workflow tests",
+    "status": "todo",
+    "priority": "medium",
+    "deps": [
+      47
+    ],
+    "parent": 41
+  },
+  {
+    "id": 49,
+    "title": "Add testing commands to Makefile",
+    "status": "todo",
+    "priority": "low",
+    "deps": [
+      46,
+      47
+    ],
+    "parent": 41
+  },
+  {
+    "id": 50,
+    "title": "Add a settings menu to app.  Include  configurable path to task.json data file.  Default will be \u003crepo\u003e/plan/task.json",
+    "status": "todo",
+    "priority": "medium",
+    "deps": [],
+    "parent": null
   }
 ]
