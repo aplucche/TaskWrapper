@@ -7,7 +7,7 @@ WAILS_DIR = task-dashboard
 PATH_WITH_GO = $(shell echo $$PATH:/usr/local/go/bin:$$HOME/go/bin)
 MAX_SUBAGENTS ?= 2
 
-.PHONY: help build test run dev logs install web agent-status agent-watch agent-cleanup agent-cleanup-force agent-test agent-logs agent-logs-follow add_subagent
+.PHONY: help build clean rebuild test run dev logs install web agent-status agent-watch agent-cleanup agent-cleanup-force agent-test agent-logs agent-logs-follow add_subagent
 
 help:   ## list targets
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN{FS=" *## *"}{printf "%-20s %s\n", $$1, $$2}' | sed 's/:.*##//'
@@ -16,7 +16,24 @@ install:  ## install dependencies
 	cd $(WAILS_DIR)/frontend && npm install
 
 build:  ## compile / package wails app
+	@echo "Preparing build environment..."
+	@cd $(WAILS_DIR)/frontend && npm install --silent
+	@cd $(WAILS_DIR) && PATH=$(PATH_WITH_GO) go mod tidy
+	@echo "Building application..."
 	cd $(WAILS_DIR) && PATH=$(PATH_WITH_GO) wails build
+	@echo "Build completed successfully!"
+	@ls -la $(WAILS_DIR)/build/bin/
+
+clean:  ## clean build artifacts and regenerate bindings  
+	@echo "Cleaning build artifacts..."
+	@rm -rf $(WAILS_DIR)/build/
+	@rm -rf $(WAILS_DIR)/frontend/dist/
+	@rm -rf $(WAILS_DIR)/frontend/wailsjs/
+	@echo "Clean completed!"
+
+rebuild:  ## clean build artifacts and rebuild from scratch
+	@$(MAKE) clean
+	@$(MAKE) build
 
 test:   ## run all tests
 	cd $(WAILS_DIR) && PATH=$(PATH_WITH_GO) go test ./...
