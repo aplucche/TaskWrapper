@@ -17,8 +17,11 @@ install:  ## install dependencies
 build:  ## compile / package wails app
 	cd $(WAILS_DIR) && PATH=$(PATH_WITH_GO) wails build
 
-test:   ## run tests
+test:   ## run all tests
 	cd $(WAILS_DIR) && PATH=$(PATH_WITH_GO) go test ./...
+
+test-go:  ## run Go backend tests
+	cd $(WAILS_DIR) && PATH=$(PATH_WITH_GO) go test -v
 
 run:    ## start desktop app
 	cd $(WAILS_DIR) && PATH=$(PATH_WITH_GO) wails build && ./build/bin/$(APP)

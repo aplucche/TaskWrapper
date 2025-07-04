@@ -349,7 +349,7 @@
   {
     "id": 46,
     "title": "Implement Go backend test suite",
-    "status": "todo",
+    "status": "done",
     "priority": "high",
     "deps": [],
     "parent": 41

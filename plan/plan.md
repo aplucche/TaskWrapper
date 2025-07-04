@@ -86,6 +86,14 @@ task-dashboard/
 - [x] Fix path resolution for standalone app
 - [ ] File watching for external changes (optional enhancement)
 
+### Phase 5: Testing Infrastructure 🚧
+- [ ] Document testing strategy and approach
+- [ ] Assess current toolchain for testing compatibility  
+- [x] Implement Go backend test suite (8 comprehensive tests)
+- [ ] Setup Playwright E2E infrastructure
+- [ ] Implement core E2E workflow tests
+- [ ] Add testing commands to Makefile
+
 ## Risks
 
 ### Technical Risks
