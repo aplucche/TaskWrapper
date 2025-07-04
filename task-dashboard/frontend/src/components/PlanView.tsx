@@ -44,6 +44,7 @@ const PlanView: React.FC<PlanViewProps> = ({ onError, onSave }) => {
       await SavePlan(content);
       setOriginalContent(content);
       setIsDirty(false);
+      setIsEditing(false); // Return to view mode after successful save
       onSave();
     } catch (err) {
       onError(`Failed to save plan: ${err}`);

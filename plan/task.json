@@ -438,5 +438,21 @@
     "priority": "high",
     "deps": [],
     "parent": null
+  },
+  {
+    "id": 64,
+    "title": "We are adding a new section to the dashboard - a plan section (and the kanban board is the task section).  Plan for now will just be a simple markdown formatted and editable view of plan.md.",
+    "status": "pending_review",
+    "priority": "medium",
+    "deps": [],
+    "parent": null
+  },
+  {
+    "id": 65,
+    "title": "Add a new page to the dashboard that includes a terminal that can run claude code.  Also include a view that monitors the information in agent_status.sh",
+    "status": "todo",
+    "priority": "medium",
+    "deps": [],
+    "parent": null
   }
 ]

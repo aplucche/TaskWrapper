@@ -10,6 +10,9 @@ yarn-error.log*
 # Task backups
 plan/task.json.backup.*
 
+# Agent state
+.agent_state
+
 # Logs
 logs/universal_logs-*.log
 
