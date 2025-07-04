@@ -38,6 +38,33 @@ A standalone desktop application built with Wails (Go + React + TypeScript) that
 5. File watching detects external changes
 6. All operations logged to `logs/universal_logs-*.log`
 
+### Enhanced Review System
+The application includes a robust review workflow for `pending_review` tasks:
+
+#### Review Process
+1. **Pending Review Tasks**: Tasks with `status: "pending_review"` appear in the "Done" column
+2. **Visual Indicators**: Purple "🔍 Pending Review" header with approve/reject buttons
+3. **Approve Workflow**: 
+   - Merges corresponding `task_X` git branch to main
+   - Deletes the task branch after successful merge
+   - Updates task status to `done`
+4. **Reject Workflow**:
+   - Deletes the `task_X` git branch (no merge)
+   - Prefixes task title with "NOT MERGED: "
+   - Updates task status to `done`
+
+#### Backend API
+- `ApproveTask(taskID int)`: Git merge + task status update
+- `RejectTask(taskID int)`: Git branch deletion + task title prefix
+- Comprehensive error handling for missing branches, merge conflicts
+- Full logging of all review operations
+
+#### UI Components
+- Clean approve/reject button layout for pending_review tasks
+- Loading states ("Approving..." / "Rejecting...")
+- Automatic button removal after operation completion
+- Error handling with user-friendly messages
+
 ### Project Structure
 ```
 task-dashboard/
@@ -86,7 +113,17 @@ task-dashboard/
 - [x] Fix path resolution for standalone app
 - [ ] File watching for external changes (optional enhancement)
 
-### Phase 5: Testing Infrastructure 🚧
+### Phase 5: Enhanced Review System ✅
+- [x] Design minimal approve/reject workflow for pending_review tasks
+- [x] Implement ApproveTask() and RejectTask() backend methods
+- [x] Add git merge and branch deletion operations
+- [x] Create approve/reject UI buttons with loading states
+- [x] Integrate with existing task management workflow
+- [x] Add comprehensive error handling and logging
+- [x] Test both approve and reject functionality
+- [x] Remove duplicate API calls and fix UI state issues
+
+### Phase 6: Testing Infrastructure 🚧
 - [ ] Document testing strategy and approach
 - [ ] Assess current toolchain for testing compatibility  
 - [x] Implement Go backend test suite (8 comprehensive tests)
