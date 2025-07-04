@@ -42,6 +42,34 @@ logs/
 - Prefer minimal and decoupled solutions. Lean on effective high leverage data structures to guide development
 - Favor extensible patterns over precise outcomes. A design that can grow and adapt is preferred to a flawless one-shot solution.
 - Test extensively and intelligently, prune ununsed code aggressively.
+- **Exploration over perfection**: Don't fear ambitious attempts that exceed scope. Create exploratory branches, learn deeply, document findings, then implement scaled-down versions. Failed experiments that generate learnings are more valuable than safe implementations that teach nothing.
+
+### Exploration Learning Workflow
+When an implementation becomes too complex or hits significant obstacles, use this workflow to preserve learnings and restart effectively:
+
+1. **Preserve the attempt**: 
+   ```bash
+   git checkout -b exploration_[feature_name]
+   git add . && git commit -m "feat: exploration attempt for [feature_name] - preserve learnings"
+   ```
+
+2. **Return to main and document learnings**:
+   ```bash
+   git checkout main
+   # Create plan/[feature_name]_exploration.md with:
+   # - What was attempted and why
+   # - Dead ends encountered and root causes  
+   # - What would be done differently
+   # - Scaled-down approach for next attempt
+   ```
+
+3. **Start fresh with learnings applied**:
+   ```bash
+   git checkout -b [feature_name]_v2
+   # Implement scaled-down version using documented learnings
+   ```
+
+**Key principle**: Failed experiments that generate documented learnings create more project value than perfect implementations that teach nothing. Make pivoting psychologically easy by treating exploration branches as valuable research, not "mistakes."
 
 
 ## Task Dashboard Application
