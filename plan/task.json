@@ -390,5 +390,13 @@
     "priority": "medium",
     "deps": [],
     "parent": null
+  },
+  {
+    "id": 52,
+    "title": "Add 'pending review' status to task workflow",
+    "status": "todo",
+    "priority": "high",
+    "deps": [],
+    "parent": null
   }
 ]
