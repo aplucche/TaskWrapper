@@ -1,11 +1,38 @@
 .DS_Store
 *.pyc
 
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 # Task backups
 plan/task.json.backup.*
 
 # Logs
 logs/universal_logs-*.log
 
+# Test results and artifacts
+test-results/
+playwright-report/
+playwright-results.log
+nohup.out
+coverage/
+*.lcov
+
 # Build artifacts  
 task-dashboard/build/darwin/Info.dev.plist
+build/
+dist/
+*.exe
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.temp
