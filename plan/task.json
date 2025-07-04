@@ -418,7 +418,7 @@
   {
     "id": 59,
     "title": "Add \"Hide Complete\" toggle to top bar of UI that hides done tasks.  It does not hide \"pending review\" status.",
-    "status": "todo",
+    "status": "pending_review",
     "priority": "medium",
     "deps": [],
     "parent": null
