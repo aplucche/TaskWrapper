@@ -38,6 +38,30 @@ logs/
 ├── universal_logs-<YYYY-MM-DD>.log
 ```
 
+### Claude Agent Automation
+When a task is moved from "todo" to "doing" in the Task Dashboard, a Claude agent is automatically launched to work on the task:
+
+1. **Automatic Launch**: Dashboard detects todo→doing transitions and launches:
+   ```bash
+   claude "Review plan.md and task.json. Begin task #XX: [title]. Update task.json status to 'done' when complete, commit to branch task_XX, then exit." --dangerously-skip-permissions
+   ```
+
+2. **Agent Workflow**:
+   - Reviews plan.md and task.json for context
+   - Works autonomously on the task
+   - Updates task.json status to "done" when complete
+   - Commits changes to branch `task_XX`
+   - Exits automatically
+
+3. **Monitoring Tools** (in `plan/helpers_and_tools/`):
+   - `agent_status.sh [TASK_ID] [PID]` - Quick status check
+   - `monitor_claude_agent.sh [TASK_ID]` - Live progress monitoring via universal logs
+   - `log_viewer.sh` - Raw universal log viewer
+
+4. **Manual Review**: User reviews and merges task branches to main
+
+**Note**: Only todo→doing transitions trigger agents. Direct file edits or refresh button do NOT trigger automation.
+
 ### Design Philosophy
 - Prefer minimal and decoupled solutions. Lean on effective high leverage data structures to guide development
 - Favor extensible patterns over precise outcomes. A design that can grow and adapt is preferred to a flawless one-shot solution.

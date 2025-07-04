@@ -354,3 +354,99 @@ func TestRefreshFromDisk(t *testing.T) {
 		t.Errorf("Expected external task title 'External Task', got '%s'", refreshedTasks[0].Title)
 	}
 }
+
+// Test 10: Claude Agent Prompt Generation
+func TestGenerateTaskPrompt(t *testing.T) {
+	app, cleanup := setupTestApp(t)
+	defer cleanup()
+
+	tests := []struct {
+		name     string
+		task     Task
+		expected string
+	}{
+		{
+			name: "Simple task",
+			task: Task{ID: 1, Title: "Simple Task", Status: "todo", Priority: "medium"},
+			expected: "Review plan.md and task.json. Begin task #1: Simple Task. Update task.json status to 'done' when complete, commit to branch task_1, then exit.",
+		},
+		{
+			name: "High priority task",
+			task: Task{ID: 2, Title: "Urgent Task", Status: "todo", Priority: "high"},
+			expected: "Review plan.md and task.json. Begin task #2: Urgent Task. This is a high priority task. Update task.json status to 'done' when complete, commit to branch task_2, then exit.",
+		},
+		{
+			name: "Task with parent",
+			task: Task{ID: 3, Title: "Subtask", Status: "todo", Priority: "low", Parent: &[]int{10}[0]},
+			expected: "Review plan.md and task.json. Begin task #3: Subtask. This is a subtask of #10. Update task.json status to 'done' when complete, commit to branch task_3, then exit.",
+		},
+		{
+			name: "Task with dependencies",
+			task: Task{ID: 4, Title: "Dependent Task", Status: "todo", Priority: "medium", Deps: []int{1, 2}},
+			expected: "Review plan.md and task.json. Begin task #4: Dependent Task. Dependencies: #1, #2. Update task.json status to 'done' when complete, commit to branch task_4, then exit.",
+		},
+		{
+			name: "Complex task",
+			task: Task{ID: 5, Title: "Complex Task", Status: "todo", Priority: "high", Parent: &[]int{20}[0], Deps: []int{3, 4}},
+			expected: "Review plan.md and task.json. Begin task #5: Complex Task. This is a subtask of #20. Dependencies: #3, #4. This is a high priority task. Update task.json status to 'done' when complete, commit to branch task_5, then exit.",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := app.generateTaskPrompt(tt.task)
+			if result != tt.expected {
+				t.Errorf("generateTaskPrompt() = %q, expected %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+// Test 11: Todo to Doing Transition (Claude agent trigger condition)
+func TestTodoToDoingTransition(t *testing.T) {
+	app, cleanup := setupTestApp(t)
+	defer cleanup()
+
+	// Setup initial tasks with specific status
+	testTasksWithStatus := []Task{
+		{ID: 1, Title: "Test Task 1", Status: "todo", Priority: "high", Deps: []int{}, Parent: nil},
+		{ID: 2, Title: "Test Task 2", Status: "backlog", Priority: "medium", Deps: []int{}, Parent: nil},
+	}
+	
+	if err := app.SaveTasks(testTasksWithStatus); err != nil {
+		t.Fatalf("SaveTasks failed: %v", err)
+	}
+
+	// Test moving from "todo" to "doing" - this should trigger Claude agent launch
+	err := app.MoveTask(1, "doing")
+	if err != nil {
+		t.Fatalf("MoveTask from 'todo' to 'doing' failed: %v", err)
+	}
+
+	// Test moving from "backlog" to "doing" - this should NOT trigger Claude agent
+	err = app.MoveTask(2, "doing") 
+	if err != nil {
+		t.Fatalf("MoveTask from 'backlog' to 'doing' failed: %v", err)
+	}
+
+	// Verify both tasks were moved to "doing"
+	tasks, err := app.LoadTasks()
+	if err != nil {
+		t.Fatalf("LoadTasks failed: %v", err)
+	}
+
+	doingCount := 0
+	for _, task := range tasks {
+		if task.Status == "doing" {
+			doingCount++
+		}
+	}
+
+	if doingCount != 2 {
+		t.Errorf("Expected 2 tasks in 'doing' status, got %d", doingCount)
+	}
+
+	// Note: The actual Claude agent launch happens in a goroutine and can't be
+	// easily tested in unit tests. The condition (oldStatus == "todo" && newStatus == "doing")
+	// is the key logic that determines when agents are launched.
+}

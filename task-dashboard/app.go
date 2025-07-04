@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sync"
 	"time"
@@ -184,9 +185,13 @@ func (a *App) MoveTask(taskID int, newStatus string) error {
 	
 	// Find and update the task status
 	found := false
+	var updatedTask Task
+	var oldStatus string
 	for i, task := range a.tasks {
 		if task.ID == taskID {
+			oldStatus = task.Status
 			a.tasks[i].Status = newStatus
+			updatedTask = a.tasks[i]
 			found = true
 			break
 		}
@@ -201,7 +206,13 @@ func (a *App) MoveTask(taskID int, newStatus string) error {
 		return err
 	}
 	
-	a.logInfo(fmt.Sprintf("Task %d moved to %s", taskID, newStatus))
+	a.logInfo(fmt.Sprintf("Task %d moved from %s to %s", taskID, oldStatus, newStatus))
+	
+	// Only launch Claude agent if moving from "todo" to "doing"
+	if oldStatus == "todo" && newStatus == "doing" {
+		go a.launchClaudeAgent(updatedTask) // Non-blocking
+	}
+	
 	return nil
 }
 
@@ -218,6 +229,61 @@ func (a *App) GetTasksByStatus(status string) ([]Task, error) {
 	}
 	
 	return filtered, nil
+}
+
+// launchClaudeAgent starts a Claude Code agent for the given task
+func (a *App) launchClaudeAgent(task Task) {
+	prompt := a.generateTaskPrompt(task)
+	
+	// Determine project root directory (go up from plan/ to project root)
+	projectRoot := filepath.Dir(filepath.Dir(a.taskFile))
+	
+	// Create the claude command
+	cmd := exec.Command("claude", prompt, "--dangerously-skip-permissions")
+	cmd.Dir = projectRoot
+	
+	// Log the launch
+	a.logInfo(fmt.Sprintf("Launching Claude agent for task #%d: %s", task.ID, task.Title))
+	a.logInfo(fmt.Sprintf("Claude prompt: %s", prompt))
+	a.logInfo(fmt.Sprintf("Working directory: %s", projectRoot))
+	
+	// Start the process (non-blocking)
+	if err := cmd.Start(); err != nil {
+		a.logError(fmt.Sprintf("Failed to launch Claude agent for task #%d", task.ID), err)
+		return
+	}
+	
+	a.logInfo(fmt.Sprintf("Claude agent started successfully for task #%d (PID: %d)", task.ID, cmd.Process.Pid))
+}
+
+// generateTaskPrompt creates a context-aware prompt for the Claude agent
+func (a *App) generateTaskPrompt(task Task) string {
+	basePrompt := fmt.Sprintf("Review plan.md and task.json. Begin task #%d: %s.", task.ID, task.Title)
+	
+	// Add context based on task properties
+	if task.Parent != nil {
+		basePrompt += fmt.Sprintf(" This is a subtask of #%d.", *task.Parent)
+	}
+	
+	if len(task.Deps) > 0 {
+		depStr := ""
+		for i, dep := range task.Deps {
+			if i > 0 {
+				depStr += ", "
+			}
+			depStr += fmt.Sprintf("#%d", dep)
+		}
+		basePrompt += fmt.Sprintf(" Dependencies: %s.", depStr)
+	}
+	
+	if task.Priority == "high" {
+		basePrompt += " This is a high priority task."
+	}
+	
+	// Add detailed instructions for completion and branching
+	basePrompt += fmt.Sprintf(" Update task.json status to 'done' when complete, commit to branch task_%d, then exit.", task.ID)
+	
+	return basePrompt
 }
 
 // Private helper methods
