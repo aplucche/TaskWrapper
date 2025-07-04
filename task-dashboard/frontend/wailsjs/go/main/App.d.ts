@@ -6,11 +6,15 @@ export function ApproveTask(arg1:number):Promise<void>;
 
 export function GetTasksByStatus(arg1:string):Promise<Array<main.Task>>;
 
+export function LoadPlan():Promise<string>;
+
 export function LoadTasks():Promise<Array<main.Task>>;
 
 export function MoveTask(arg1:number,arg2:string):Promise<void>;
 
 export function RejectTask(arg1:number):Promise<void>;
+
+export function SavePlan(arg1:string):Promise<void>;
 
 export function SaveTasks(arg1:Array<main.Task>):Promise<void>;
 

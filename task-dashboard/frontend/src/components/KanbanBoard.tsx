@@ -150,7 +150,7 @@ const KanbanBoard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-full">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -162,7 +162,7 @@ const KanbanBoard: React.FC = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div className="h-full flex flex-col bg-gray-50">
       <Header 
         lastSaved={lastSaved} 
         error={error} 

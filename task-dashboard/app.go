@@ -381,6 +381,57 @@ func (a *App) RejectTask(taskID int) error {
 	return nil
 }
 
+// LoadPlan loads the plan.md file and returns its content
+func (a *App) LoadPlan() (string, error) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
+	planFile := filepath.Join(filepath.Dir(a.taskFile), "plan.md")
+	a.logInfo(fmt.Sprintf("Loading plan from: %s", planFile))
+
+	content, err := os.ReadFile(planFile)
+	if err != nil {
+		a.logError("Failed to load plan.md", err)
+		return "", fmt.Errorf("failed to read plan.md: %w", err)
+	}
+
+	a.logInfo("Plan loaded successfully")
+	return string(content), nil
+}
+
+// SavePlan saves content to the plan.md file
+func (a *App) SavePlan(content string) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	planFile := filepath.Join(filepath.Dir(a.taskFile), "plan.md")
+	a.logInfo(fmt.Sprintf("Saving plan to: %s", planFile))
+
+	// Create backup of plan.md
+	if _, err := os.Stat(planFile); err == nil {
+		timestamp := time.Now().Format("20060102_150405")
+		backupFile := planFile + ".backup." + timestamp
+		
+		data, err := os.ReadFile(planFile)
+		if err != nil {
+			a.logError("Failed to read plan.md for backup", err)
+			// Continue with save even if backup fails
+		} else if err := os.WriteFile(backupFile, data, 0644); err != nil {
+			a.logError("Failed to create backup of plan.md", err)
+			// Continue with save even if backup fails
+		}
+	}
+
+	// Write the new content
+	if err := os.WriteFile(planFile, []byte(content), 0644); err != nil {
+		a.logError("Failed to save plan.md", err)
+		return fmt.Errorf("failed to write plan.md: %w", err)
+	}
+
+	a.logInfo("Plan saved successfully")
+	return nil
+}
+
 // Private helper methods
 
 func (a *App) loadTasks() error {

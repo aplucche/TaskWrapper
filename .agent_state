@@ -1,0 +1,7 @@
+status=busy
+pid=34421
+task_id=64
+task_title=We are adding a new section to the dashboard - a plan section (and the kanban board is the task section).  Plan for now will just be a simple markdown formatted and editable view of plan.md.
+started=1751656284
+started_human=Fri Jul  4 15:11:24 EDT 2025
+worktree=subagent1
