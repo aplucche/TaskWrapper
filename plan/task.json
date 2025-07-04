@@ -293,7 +293,7 @@
   {
     "id": 39,
     "title": "Fix dropdown menu visibility - delete button being cut off. NOTE: Tried z-index fixes, overflow-visible, repositioning (top-full, bottom-full, fixed positioning). Issue persists - may need portal rendering or different dropdown library. Delete function works via keyboard navigation.",
-    "status": "todo",
+    "status": "backlog",
     "priority": "low",
     "deps": [],
     "parent": null
@@ -301,7 +301,7 @@
   {
     "id": 40,
     "title": "Tech debt clean up - target hardcoded, prototype, or brittle code.",
-    "status": "todo",
+    "status": "done",
     "priority": "high",
     "deps": [],
     "parent": null
@@ -325,7 +325,7 @@
   {
     "id": 43,
     "title": "Tech debt clean up - CSS - build correct CSS abstractions to make easier to modify",
-    "status": "todo",
+    "status": "done",
     "priority": "low",
     "deps": [],
     "parent": null
@@ -333,7 +333,7 @@
   {
     "id": 44,
     "title": "Document testing strategy and approach",
-    "status": "todo",
+    "status": "done",
     "priority": "high",
     "deps": [],
     "parent": 41
@@ -341,7 +341,7 @@
   {
     "id": 45,
     "title": "Assess current toolchain for testing compatibility",
-    "status": "todo",
+    "status": "done",
     "priority": "high",
     "deps": [],
     "parent": 41
@@ -375,7 +375,7 @@
   {
     "id": 49,
     "title": "Add testing commands to Makefile",
-    "status": "todo",
+    "status": "done",
     "priority": "low",
     "deps": [
       46,
@@ -392,58 +392,34 @@
     "parent": null
   },
   {
-    "id": 52,
-    "title": "Add 'pending review' status to task workflow",
+    "id": 54,
+    "title": "Update Go backend to support pending_review status",
+    "status": "done",
+    "priority": "high",
+    "deps": [],
+    "parent": 52
+  },
+  {
+    "id": 56,
+    "title": "Update Claude agent prompts to use pending_review instead of done",
+    "status": "done",
+    "priority": "high",
+    "deps": [],
+    "parent": 52
+  },
+  {
+    "id": 58,
+    "title": "Continue pending_review implementation - START HERE: Full automation working with todo→doing Claude agents. Need to add pending_review column to UI (5 columns total), update Go backend status validation, update React frontend, change agent prompts from 'done' to 'pending_review', and add accept/reject review actions. See plan/pending_review_design.md for complete details.",
     "status": "todo",
     "priority": "high",
     "deps": [],
     "parent": null
   },
   {
-    "id": 53,
-    "title": "Add pending_review column and status to dashboard",
-    "status": "todo",
-    "priority": "high",
-    "deps": [],
-    "parent": 52
-  },
-  {
-    "id": 54,
-    "title": "Update Go backend to support pending_review status",
-    "status": "todo",
-    "priority": "high",
-    "deps": [],
-    "parent": 52
-  },
-  {
-    "id": 55,
-    "title": "Update React frontend to display pending_review column",
-    "status": "todo",
-    "priority": "high",
-    "deps": [54],
-    "parent": 52
-  },
-  {
-    "id": 56,
-    "title": "Update Claude agent prompts to use pending_review instead of done",
-    "status": "todo",
-    "priority": "high",
-    "deps": [],
-    "parent": 52
-  },
-  {
-    "id": 57,
-    "title": "Add review workflow: accept (move to done) or reject (chunking into subtasks)",
+    "id": 59,
+    "title": "Add \"Hide Complete\" toggle to top bar of UI that hides done tasks.  It does not hide \"pending review\" status.",
     "status": "todo",
     "priority": "medium",
-    "deps": [53, 54, 55],
-    "parent": 52
-  },
-  {
-    "id": 58,
-    "title": "Add minimal pending_review status: agents set tasks to 'pending_review' instead of 'done', tasks with this status show purple badge in done column for review workflow",
-    "status": "done",
-    "priority": "high",
     "deps": [],
     "parent": null
   }
