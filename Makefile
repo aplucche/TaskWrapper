@@ -7,7 +7,7 @@ WAILS_DIR = task-dashboard
 PATH_WITH_GO = $(shell echo $$PATH:/usr/local/go/bin:$$HOME/go/bin)
 MAX_SUBAGENTS ?= 2
 
-.PHONY: help build test run dev logs install web agent-status agent-watch agent-cleanup agent-cleanup-force agent-test add_subagent
+.PHONY: help build test run dev logs install web agent-status agent-watch agent-cleanup agent-cleanup-force agent-test agent-logs agent-logs-follow add_subagent
 
 help:   ## list targets
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN{FS=" *## *"}{printf "%-20s %s\n", $$1, $$2}' | sed 's/:.*##//'
@@ -60,6 +60,14 @@ agent-cleanup-force: ## force clean up stale agent locks
 
 agent-test: ## validate agent system components
 	@plan/helpers_and_tools/test_subagent_system.sh
+
+agent-logs: ## show detailed logs from subagents
+	@echo "Showing recent subagent activity from universal logs..."
+	@tail -n 100 logs/universal_logs-*.log 2>/dev/null | grep -E "(subagent|agent)" --color=always || echo "No agent logs found"
+
+agent-logs-follow: ## follow subagent logs in real-time
+	@echo "Following subagent logs in real-time (press Ctrl+C to exit)..."
+	@tail -f logs/universal_logs-*.log 2>/dev/null | grep --line-buffered -E "(subagent|agent)" --color=always
 
 add_subagent: ## create ../<repo>-subagentN worktree (detached, capped)
 	@set -e; \

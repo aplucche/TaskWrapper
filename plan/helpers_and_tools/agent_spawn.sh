@@ -178,9 +178,27 @@ started_human=$(date)
 worktree=subagent$WORKTREE_NUM
 EOF
     
+    # Set up logging
+    LOG_DIR="$ROOT/logs"
+    LOG_FILE="$LOG_DIR/universal_logs-$(date +%Y-%m-%d).log"
+    
+    # Ensure log directory exists
+    mkdir -p "$LOG_DIR"
+    
+    # Log start of agent
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] INFO subagent$WORKTREE_NUM: Starting Claude agent for task #$TASK_ID" >> "$LOG_FILE"
+    
     # Run Claude (ensure PATH includes common locations)
     export PATH="$PATH:/usr/local/bin:/Users/aplucche/.nvm/versions/node/v20.16.0/bin"
-    claude "$PROMPT" --dangerously-skip-permissions
+    
+    # Capture all Claude output and redirect to logs with timestamps
+    {
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] INFO subagent$WORKTREE_NUM: Claude agent output begins ---"
+        claude "$PROMPT" --dangerously-skip-permissions 2>&1 | while IFS= read -r line; do
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] INFO subagent$WORKTREE_NUM: $line"
+        done
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] INFO subagent$WORKTREE_NUM: Claude agent output ends ---"
+    } >> "$LOG_FILE"
     
     # Switch back to detached main to allow branch deletion
     git checkout --detach main >/dev/null 2>&1
