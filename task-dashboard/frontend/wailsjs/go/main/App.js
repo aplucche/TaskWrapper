@@ -10,6 +10,10 @@ export function GetTasksByStatus(arg1) {
   return window['go']['main']['App']['GetTasksByStatus'](arg1);
 }
 
+export function LoadPlan() {
+  return window['go']['main']['App']['LoadPlan']();
+}
+
 export function LoadTasks() {
   return window['go']['main']['App']['LoadTasks']();
 }
@@ -20,6 +24,10 @@ export function MoveTask(arg1, arg2) {
 
 export function RejectTask(arg1) {
   return window['go']['main']['App']['RejectTask'](arg1);
+}
+
+export function SavePlan(arg1) {
+  return window['go']['main']['App']['SavePlan'](arg1);
 }
 
 export function SaveTasks(arg1) {

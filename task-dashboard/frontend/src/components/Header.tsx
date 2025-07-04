@@ -50,8 +50,6 @@ const Header: React.FC<HeaderProps> = ({ lastSaved, error, onRefresh, onCreateTa
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <h1 className="text-2xl font-bold text-gray-900">Task Dashboard</h1>
-          
           {/* Status indicator */}
           <div className="flex items-center space-x-2">
             {error ? (
