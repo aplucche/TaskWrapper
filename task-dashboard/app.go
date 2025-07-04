@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -233,27 +234,29 @@ func (a *App) GetTasksByStatus(status string) ([]Task, error) {
 
 // launchClaudeAgent starts a Claude Code agent for the given task
 func (a *App) launchClaudeAgent(task Task) {
-	prompt := a.generateTaskPrompt(task)
-	
 	// Determine project root directory (go up from plan/ to project root)
 	projectRoot := filepath.Dir(filepath.Dir(a.taskFile))
 	
-	// Create the claude command
-	cmd := exec.Command("claude", prompt, "--dangerously-skip-permissions")
+	// Use the new agent_spawn.sh script
+	scriptPath := filepath.Join(projectRoot, "plan", "helpers_and_tools", "agent_spawn.sh")
+	
+	// Create the command with task ID and title as arguments
+	cmd := exec.Command(scriptPath, strconv.Itoa(task.ID), task.Title)
 	cmd.Dir = projectRoot
 	
 	// Log the launch
 	a.logInfo(fmt.Sprintf("Launching Claude agent for task #%d: %s", task.ID, task.Title))
-	a.logInfo(fmt.Sprintf("Claude prompt: %s", prompt))
+	a.logInfo(fmt.Sprintf("Using agent spawner: %s", scriptPath))
 	a.logInfo(fmt.Sprintf("Working directory: %s", projectRoot))
 	
-	// Start the process (non-blocking)
-	if err := cmd.Start(); err != nil {
-		a.logError(fmt.Sprintf("Failed to launch Claude agent for task #%d", task.ID), err)
+	// Capture output for logging
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		a.logError(fmt.Sprintf("Failed to launch Claude agent for task #%d: %s", task.ID, string(output)), err)
 		return
 	}
 	
-	a.logInfo(fmt.Sprintf("Claude agent started successfully for task #%d (PID: %d)", task.ID, cmd.Process.Pid))
+	a.logInfo(fmt.Sprintf("Agent spawner output: %s", string(output)))
 }
 
 // generateTaskPrompt creates a minimal prompt for the Claude agent

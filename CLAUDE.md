@@ -189,3 +189,11 @@ gemini -p "@./ Give me an overview of this entire project"
 # Or use --all_files flag for everything
 gemini --all_files -p "Analyze the project structure and dependencies"
 ```
+
+### Development Process Reminders
+
+- **Branch Merge Reminder**: 
+  - After merging branches make sure to update the related todo.json task from pending_review to done
+
+### Development Best Practices
+- Check if the dev server is running before starting. Use nohup for long running processes including the dev server

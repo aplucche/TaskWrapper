@@ -418,6 +418,14 @@
   {
     "id": 59,
     "title": "Add \"Hide Complete\" toggle to top bar of UI that hides done tasks.  It does not hide \"pending review\" status.",
+    "status": "done",
+    "priority": "medium",
+    "deps": [],
+    "parent": null
+  },
+  {
+    "id": 61,
+    "title": "Add a file agent_script_cheatsheet.md to helpers_and_tools",
     "status": "pending_review",
     "priority": "medium",
     "deps": [],

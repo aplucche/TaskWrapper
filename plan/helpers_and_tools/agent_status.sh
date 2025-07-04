@@ -1,39 +1,84 @@
-#!/bin/bash
-# Quick agent status check
+#!/usr/bin/env bash
+# agent_status.sh - Monitor status of all subagent worktrees
+set -euo pipefail
 
-TASK_ID=${1:-51}
-AGENT_PID=${2}
+# Configuration
+ROOT=$(git rev-parse --show-toplevel)
+REPO=$(basename "$ROOT")
+PARENT=$(dirname "$ROOT")
 
-echo "🤖 Claude Agent Status Check"
-echo "============================="
+# Colors for output
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+RED='\033[0;31m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
-# Check task status
-TASK_STATUS=$(grep -A 5 -B 1 "\"id\": $TASK_ID" plan/task.json | grep "status" | cut -d'"' -f4)
-echo "📋 Task #$TASK_ID Status: $TASK_STATUS"
+echo -e "${BLUE}=== Subagent Worktree Status ===${NC}"
+echo
 
-# Check if branch exists
-if git branch -a | grep -q "task_$TASK_ID"; then
-    echo "🌳 Branch task_$TASK_ID: EXISTS"
-else
-    echo "🌳 Branch task_$TASK_ID: NOT FOUND"
+# Get all worktrees
+worktrees=$(git -C "$ROOT" worktree list --porcelain | grep "^worktree.*-subagent[0-9]" | awk '{print $2}' | sort -V)
+
+if [[ -z "$worktrees" ]]; then
+    echo "No subagent worktrees found."
+    echo "Run 'make add_subagent' to create one."
+    exit 0
 fi
 
-# Check if PID provided and running
-if [ -n "$AGENT_PID" ]; then
-    if ps -p $AGENT_PID > /dev/null 2>&1; then
-        echo "⚡ Agent PID $AGENT_PID: RUNNING"
+# Track totals
+total=0
+busy=0
+idle=0
+
+# Check each worktree
+for worktree in $worktrees; do
+    ((total++))
+    name=$(basename "$worktree")
+    lockfile="$worktree/.agent_state"
+    
+    if [[ ! -f "$lockfile" ]]; then
+        echo -e "${GREEN}✓ $name${NC} - IDLE"
+        ((idle++))
     else
-        echo "💀 Agent PID $AGENT_PID: STOPPED"
+        # Read lock file
+        status=$(grep "^status=" "$lockfile" 2>/dev/null | cut -d= -f2 || echo "unknown")
+        pid=$(grep "^pid=" "$lockfile" 2>/dev/null | cut -d= -f2 || echo "?")
+        task_id=$(grep "^task_id=" "$lockfile" 2>/dev/null | cut -d= -f2 || echo "?")
+        task_title=$(grep "^task_title=" "$lockfile" 2>/dev/null | cut -d= -f2 || echo "?")
+        started=$(grep "^started_human=" "$lockfile" 2>/dev/null | cut -d= -f2- || echo "?")
+        
+        # Check if process is still running
+        if [[ "$pid" != "?" ]] && kill -0 "$pid" 2>/dev/null; then
+            echo -e "${YELLOW}● $name${NC} - BUSY"
+            echo "    Task: #$task_id - $task_title"
+            echo "    PID: $pid (running)"
+            echo "    Started: $started"
+            ((busy++))
+        else
+            echo -e "${RED}! $name${NC} - STALE LOCK"
+            echo "    Task: #$task_id - $task_title"
+            echo "    PID: $pid (dead)"
+            echo "    Lock file should be cleaned up"
+        fi
     fi
+    echo
+done
+
+# Summary
+echo -e "${BLUE}=== Summary ===${NC}"
+echo "Total worktrees: $total"
+echo -e "Idle: ${GREEN}$idle${NC}"
+echo -e "Busy: ${YELLOW}$busy${NC}"
+
+# Check against MAX_SUBAGENTS
+MAX_SUBAGENTS=${MAX_SUBAGENTS:-2}
+if (( total < MAX_SUBAGENTS )); then
+    available=$((MAX_SUBAGENTS - total))
+    echo -e "Available slots: ${GREEN}$available${NC} (can create $available more worktrees)"
 fi
 
-# Check recent commits
-echo ""
-echo "📝 Recent Commits:"
-git log --oneline -3
-
-# Check recent universal log entries for this task
-echo ""
-echo "📊 Recent Agent Activity:"
-LOG_FILE="logs/universal_logs-$(date +%Y-%m-%d).log"
-grep "task.*$TASK_ID\|claude.*$TASK_ID" "$LOG_FILE" | tail -3
+# Git worktree summary
+echo
+echo -e "${BLUE}=== Git Worktree List ===${NC}"
+git -C "$ROOT" worktree list | grep -E "(main|subagent)" || true
