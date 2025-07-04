@@ -425,8 +425,8 @@
   },
   {
     "id": 61,
-    "title": "Add a file agent_script_cheatsheet.md to helpers_and_tools",
-    "status": "pending_review",
+    "title": "NOT MERGED: Add a file agent_script_cheatsheet.md to helpers_and_tools",
+    "status": "done",
     "priority": "medium",
     "deps": [],
     "parent": null
@@ -434,7 +434,7 @@
   {
     "id": 62,
     "title": "Add a README.md file to the project.  Use gemini to give a project wide summary and playwright mcp for screenshots.  Keep it matter of fact, but hit on any innovations or interesting parts of the repo.  Keep brief - fewer high impact lines",
-    "status": "pending_review",
+    "status": "done",
     "priority": "medium",
     "deps": [],
     "parent": null
