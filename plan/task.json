@@ -398,5 +398,45 @@
     "priority": "high",
     "deps": [],
     "parent": null
+  },
+  {
+    "id": 53,
+    "title": "Add pending_review column and status to dashboard",
+    "status": "todo",
+    "priority": "high",
+    "deps": [],
+    "parent": 52
+  },
+  {
+    "id": 54,
+    "title": "Update Go backend to support pending_review status",
+    "status": "todo",
+    "priority": "high",
+    "deps": [],
+    "parent": 52
+  },
+  {
+    "id": 55,
+    "title": "Update React frontend to display pending_review column",
+    "status": "todo",
+    "priority": "high",
+    "deps": [54],
+    "parent": 52
+  },
+  {
+    "id": 56,
+    "title": "Update Claude agent prompts to use pending_review instead of done",
+    "status": "todo",
+    "priority": "high",
+    "deps": [],
+    "parent": 52
+  },
+  {
+    "id": 57,
+    "title": "Add review workflow: accept (move to done) or reject (chunking into subtasks)",
+    "status": "todo",
+    "priority": "medium",
+    "deps": [53, 54, 55],
+    "parent": 52
   }
 ]
