@@ -51,7 +51,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, index, onUpdateTask, onDelete
   };
 
   const hasDependencies = task.deps && task.deps.length > 0;
-  const isSubTask = task.parent !== undefined;
+  const isSubTask = task.parent !== undefined && task.parent !== null;
 
   return (
     <Draggable draggableId={task.id.toString()} index={index}>

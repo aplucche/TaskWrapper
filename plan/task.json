@@ -316,8 +316,8 @@
   },
   {
     "id": 42,
-    "title": "Investigate Sub displaying on all tasks.",
-    "status": "todo",
+    "title": "Investigate 'Sub' tag displaying on all tasks.",
+    "status": "done",
     "priority": "low",
     "deps": [],
     "parent": null
