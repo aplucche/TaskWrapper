@@ -6,6 +6,10 @@ export function ApproveTask(arg1) {
   return window['go']['main']['App']['ApproveTask'](arg1);
 }
 
+export function GetAgentStatus() {
+  return window['go']['main']['App']['GetAgentStatus']();
+}
+
 export function GetTasksByStatus(arg1) {
   return window['go']['main']['App']['GetTasksByStatus'](arg1);
 }
@@ -32,6 +36,10 @@ export function SavePlan(arg1) {
 
 export function SaveTasks(arg1) {
   return window['go']['main']['App']['SaveTasks'](arg1);
+}
+
+export function StartTerminalSession() {
+  return window['go']['main']['App']['StartTerminalSession']();
 }
 
 export function UpdateTask(arg1) {

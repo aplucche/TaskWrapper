@@ -4,6 +4,8 @@ import {main} from '../models';
 
 export function ApproveTask(arg1:number):Promise<void>;
 
+export function GetAgentStatus():Promise<main.AgentStatusInfo>;
+
 export function GetTasksByStatus(arg1:string):Promise<Array<main.Task>>;
 
 export function LoadPlan():Promise<string>;
@@ -17,5 +19,7 @@ export function RejectTask(arg1:number):Promise<void>;
 export function SavePlan(arg1:string):Promise<void>;
 
 export function SaveTasks(arg1:Array<main.Task>):Promise<void>;
+
+export function StartTerminalSession():Promise<string>;
 
 export function UpdateTask(arg1:main.Task):Promise<void>;

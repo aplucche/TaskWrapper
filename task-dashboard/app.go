@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,6 +13,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+	
+	"github.com/gorilla/websocket"
+	"github.com/google/uuid"
 )
 
 // Task represents a single task in the kanban board
@@ -24,12 +28,48 @@ type Task struct {
 	Parent   *int   `json:"parent"`   // parent task ID, null if top-level
 }
 
+// Terminal represents a running terminal session
+type Terminal struct {
+	ID      string
+	Cmd     *exec.Cmd
+	Conn    *websocket.Conn
+	Done    chan bool
+}
+
+// TerminalMessage represents messages sent between frontend and backend
+type TerminalMessage struct {
+	Type string `json:"type"`
+	Data string `json:"data"`
+}
+
+// AgentWorktree represents a single subagent worktree
+type AgentWorktree struct {
+	Name      string `json:"name"`
+	Status    string `json:"status"`
+	TaskID    string `json:"taskId,omitempty"`
+	TaskTitle string `json:"taskTitle,omitempty"`
+	PID       string `json:"pid,omitempty"`
+	Started   string `json:"started,omitempty"`
+}
+
+// AgentStatusInfo represents the overall agent status
+type AgentStatusInfo struct {
+	Worktrees     []AgentWorktree `json:"worktrees"`
+	TotalWorktrees int            `json:"totalWorktrees"`
+	IdleCount     int            `json:"idleCount"`
+	BusyCount     int            `json:"busyCount"`
+	MaxSubagents  int            `json:"maxSubagents"`
+}
+
 // App struct
 type App struct {
-	ctx      context.Context
-	taskFile string
-	mu       sync.RWMutex
-	tasks    []Task
+	ctx        context.Context
+	taskFile   string
+	mu         sync.RWMutex
+	tasks      []Task
+	upgrader   websocket.Upgrader
+	terminals  map[string]*Terminal
+	terminalMu sync.RWMutex
 }
 
 // NewApp creates a new App application struct
@@ -72,8 +112,14 @@ func NewApp() *App {
 	}
 
 	app := &App{
-		taskFile: taskFile,
-		tasks:    []Task{},
+		taskFile:  taskFile,
+		tasks:     []Task{},
+		upgrader: websocket.Upgrader{
+			CheckOrigin: func(r *http.Request) bool {
+				return true // Allow all origins for development
+			},
+		},
+		terminals: make(map[string]*Terminal),
 	}
 	
 	return app
@@ -576,5 +622,228 @@ func (a *App) logToFile(level, message string) {
 	
 	if _, err := f.WriteString(logEntry); err != nil {
 		log.Printf("Failed to write to log file: %v", err)
+	}
+}
+
+// StartTerminalSession creates a new terminal session and returns its ID
+func (a *App) StartTerminalSession() string {
+	terminalID := uuid.New().String()
+	a.logInfo(fmt.Sprintf("Creating terminal session: %s", terminalID))
+	
+	// Start WebSocket server if not already running
+	go a.startWebSocketServer()
+	
+	return terminalID
+}
+
+// GetAgentStatus returns the current status of all subagents
+func (a *App) GetAgentStatus() (AgentStatusInfo, error) {
+	projectRoot := filepath.Dir(filepath.Dir(a.taskFile))
+	scriptPath := filepath.Join(projectRoot, "plan", "helpers_and_tools", "agent_status.sh")
+	
+	cmd := exec.Command(scriptPath)
+	cmd.Dir = projectRoot
+	
+	output, err := cmd.Output()
+	if err != nil {
+		a.logError("Failed to get agent status", err)
+		return AgentStatusInfo{}, fmt.Errorf("failed to run agent_status.sh: %v", err)
+	}
+	
+	return a.parseAgentStatus(string(output)), nil
+}
+
+// parseAgentStatus parses the output from agent_status.sh script
+func (a *App) parseAgentStatus(output string) AgentStatusInfo {
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	
+	info := AgentStatusInfo{
+		Worktrees:    []AgentWorktree{},
+		MaxSubagents: 5, // Default from agent_status.sh
+	}
+	
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		
+		// Parse different status types
+		if strings.Contains(line, "Total Worktrees:") {
+			if parts := strings.Split(line, ":"); len(parts) > 1 {
+				if count, err := strconv.Atoi(strings.TrimSpace(parts[1])); err == nil {
+					info.TotalWorktrees = count
+				}
+			}
+		} else if strings.Contains(line, "Idle:") {
+			if parts := strings.Split(line, ":"); len(parts) > 1 {
+				if count, err := strconv.Atoi(strings.TrimSpace(parts[1])); err == nil {
+					info.IdleCount = count
+				}
+			}
+		} else if strings.Contains(line, "Busy:") {
+			if parts := strings.Split(line, ":"); len(parts) > 1 {
+				if count, err := strconv.Atoi(strings.TrimSpace(parts[1])); err == nil {
+					info.BusyCount = count
+				}
+			}
+		} else if strings.Contains(line, "Max Subagents:") {
+			if parts := strings.Split(line, ":"); len(parts) > 1 {
+				if count, err := strconv.Atoi(strings.TrimSpace(parts[1])); err == nil {
+					info.MaxSubagents = count
+				}
+			}
+		} else if strings.Contains(line, " - ") {
+			// Parse individual worktree entries
+			parts := strings.Split(line, " - ")
+			if len(parts) >= 2 {
+				worktree := AgentWorktree{
+					Name:   strings.TrimSpace(parts[0]),
+					Status: "idle", // default
+				}
+				
+				statusPart := strings.TrimSpace(parts[1])
+				if strings.Contains(statusPart, "IDLE") {
+					worktree.Status = "idle"
+				} else if strings.Contains(statusPart, "BUSY") {
+					worktree.Status = "busy"
+					// Extract task information from busy status
+					if strings.Contains(statusPart, "Task #") {
+						if taskStart := strings.Index(statusPart, "Task #"); taskStart != -1 {
+							taskInfo := statusPart[taskStart:]
+							if colonIdx := strings.Index(taskInfo, ":"); colonIdx != -1 {
+								taskIDStr := strings.TrimSpace(taskInfo[5:colonIdx])
+								taskTitle := strings.TrimSpace(taskInfo[colonIdx+1:])
+								worktree.TaskID = taskIDStr
+								worktree.TaskTitle = taskTitle
+							}
+						}
+					}
+				} else if strings.Contains(statusPart, "STALE") {
+					worktree.Status = "stale"
+				}
+				
+				info.Worktrees = append(info.Worktrees, worktree)
+			}
+		}
+	}
+	
+	return info
+}
+
+// startWebSocketServer starts the WebSocket server for terminal sessions
+func (a *App) startWebSocketServer() {
+	http.HandleFunc("/ws/terminal/", a.handleWebSocket)
+	
+	a.logInfo("Starting WebSocket server on :8080")
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		a.logError("WebSocket server failed", err)
+	}
+}
+
+// handleWebSocket handles WebSocket connections for terminal sessions
+func (a *App) handleWebSocket(w http.ResponseWriter, r *http.Request) {
+	// Extract terminal ID from URL path
+	pathParts := strings.Split(r.URL.Path, "/")
+	if len(pathParts) < 4 {
+		http.Error(w, "Invalid terminal ID", http.StatusBadRequest)
+		return
+	}
+	terminalID := pathParts[3]
+	
+	a.logInfo(fmt.Sprintf("WebSocket connection for terminal: %s", terminalID))
+	
+	// Upgrade connection to WebSocket
+	conn, err := a.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		a.logError("Failed to upgrade WebSocket connection", err)
+		return
+	}
+	defer conn.Close()
+	
+	// Create and start terminal session
+	terminal, err := a.createTerminal(terminalID, conn)
+	if err != nil {
+		a.logError("Failed to create terminal", err)
+		return
+	}
+	
+	// Store terminal session
+	a.terminalMu.Lock()
+	a.terminals[terminalID] = terminal
+	a.terminalMu.Unlock()
+	
+	// Clean up when done
+	defer func() {
+		a.terminalMu.Lock()
+		delete(a.terminals, terminalID)
+		a.terminalMu.Unlock()
+		
+		if terminal.Cmd != nil && terminal.Cmd.Process != nil {
+			terminal.Cmd.Process.Kill()
+		}
+	}()
+	
+	// Handle messages
+	a.handleTerminalMessages(terminal)
+}
+
+// createTerminal creates a new terminal process
+func (a *App) createTerminal(terminalID string, conn *websocket.Conn) (*Terminal, error) {
+	// Create a new shell process
+	var cmd *exec.Cmd
+	
+	// Use bash on Unix-like systems
+	cmd = exec.Command("/bin/bash")
+	
+	// Set environment variables
+	cmd.Env = append(os.Environ(),
+		"TERM=xterm-256color",
+		"PS1=\\u@\\h:\\w$ ",
+	)
+	
+	terminal := &Terminal{
+		ID:   terminalID,
+		Cmd:  cmd,
+		Conn: conn,
+		Done: make(chan bool),
+	}
+	
+	// Start the process
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("failed to start terminal process: %v", err)
+	}
+	
+	a.logInfo(fmt.Sprintf("Terminal process started for session %s (PID: %d)", terminalID, cmd.Process.Pid))
+	return terminal, nil
+}
+
+// handleTerminalMessages handles the message loop for a terminal session
+func (a *App) handleTerminalMessages(terminal *Terminal) {
+	// Handle WebSocket messages
+	for {
+		var message TerminalMessage
+		err := terminal.Conn.ReadJSON(&message)
+		if err != nil {
+			a.logError("Failed to read WebSocket message", err)
+			break
+		}
+		
+		if message.Type == "input" {
+			// Send input to terminal process (this is a simplified version)
+			// In a real implementation, you'd need proper PTY handling
+			a.logInfo(fmt.Sprintf("Received input for terminal %s: %s", terminal.ID, message.Data))
+			
+			// Echo back the input for demo purposes
+			response := TerminalMessage{
+				Type: "output",
+				Data: message.Data,
+			}
+			
+			if err := terminal.Conn.WriteJSON(response); err != nil {
+				a.logError("Failed to send terminal output", err)
+				break
+			}
+		}
 	}
 }

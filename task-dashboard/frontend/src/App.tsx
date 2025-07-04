@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, FileText } from 'lucide-react';
+import { LayoutDashboard, FileText, Terminal } from 'lucide-react';
 import KanbanBoard from './components/KanbanBoard';
 import PlanView from './components/PlanView';
+import CodeView from './components/CodeView';
 
-type ViewType = 'tasks' | 'plan';
+type ViewType = 'tasks' | 'plan' | 'code';
 
 function App() {
     const [currentView, setCurrentView] = useState<ViewType>('tasks');
@@ -48,6 +49,17 @@ function App() {
                                     <FileText className="w-4 h-4" />
                                     <span>Plan</span>
                                 </button>
+                                <button
+                                    onClick={() => setCurrentView('code')}
+                                    className={`flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                                        currentView === 'code'
+                                            ? 'bg-primary-100 text-primary-700'
+                                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                                    }`}
+                                >
+                                    <Terminal className="w-4 h-4" />
+                                    <span>Code</span>
+                                </button>
                             </nav>
                         </div>
                         
@@ -69,8 +81,10 @@ function App() {
                 >
                     {currentView === 'tasks' ? (
                         <KanbanBoard />
-                    ) : (
+                    ) : currentView === 'plan' ? (
                         <PlanView onError={setError} onSave={handleSave} />
+                    ) : (
+                        <CodeView />
                     )}
                 </motion.div>
             </main>
