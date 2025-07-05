@@ -153,7 +153,8 @@ make logs      # View application logs
 ### Web Testing
 - **Development**: `make dev` serves both desktop app and web version
 - **Web URL**: `http://localhost:5173/` (Vite dev server)
-- **Playwright Testing**: Target the web URL for automated testing
+- **Wails Dev Server**: `http://localhost:34115/` (full backend integration)
+- **Playwright Testing**: Use `http://localhost:34115/` for complete functionality
 
 ### Building and Distribution
 - **Single Executable**: `make build` creates `task-dashboard.app` (8.1MB)

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -149,26 +148,13 @@ func (cm *ConfigManager) detectCurrentRepository() Repository {
 		}
 	}
 	
-	// Strategy 2: Search common development directories only as fallback
+	// Strategy 2: No valid repository found - return empty repository
+	// This indicates the app should default to settings mode
 	homeDir, _ := os.UserHomeDir()
-	searchDirs := cm.repoUtils.GetCommonSearchDirectories(homeDir)
-	
-	for _, searchDir := range searchDirs {
-		if found := cm.repoUtils.FindFirstRepositoryInDirectory(searchDir); found != "" {
-			return Repository{
-				ID:      generateID(),
-				Name:    GetRepositoryName(found),
-				Path:    found,
-				AddedAt: time.Now(),
-			}
-		}
-	}
-	
-	// Strategy 3: Fallback - create default location
 	fallbackPath := filepath.Join(homeDir, "Documents", "TaskDashboard")
 	return Repository{
 		ID:      generateID(),
-		Name:    "TaskDashboard",
+		Name:    "No Repository",
 		Path:    fallbackPath,
 		AddedAt: time.Now(),
 	}
@@ -193,7 +179,6 @@ func (cm *ConfigManager) findRepositoryRootFromPath(startPath string) string {
 		}
 		path = parent
 	}
-	
 	return ""
 }
 

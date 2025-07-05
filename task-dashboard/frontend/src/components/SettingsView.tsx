@@ -69,8 +69,11 @@ const SettingsView: React.FC = () => {
         try {
             setSaving(true);
             const name = newRepoName || validationInfo.name;
-            await AddRepository(name, newRepoPath);
+            const newRepo = await AddRepository(name, newRepoPath);
             await loadRepositories();
+            
+            // Automatically switch to the newly added repository
+            await SetActiveRepository(newRepo.id);
             
             // Reset form
             setShowAddForm(false);
@@ -78,8 +81,10 @@ const SettingsView: React.FC = () => {
             setNewRepoPath('');
             setValidationInfo(null);
             
-            // Trigger a reload of the repository switcher by storing a timestamp
+            // Trigger a reload of the repository switcher and app context
             window.dispatchEvent(new CustomEvent('repositoriesChanged'));
+            // Reload the entire app to switch context to the new repository
+            window.location.reload();
         } catch (err: any) {
             setError(err.message || 'Failed to add repository');
         } finally {
