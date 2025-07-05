@@ -16,16 +16,6 @@
     "parent": null
   },
   {
-    "id": 3,
-    "title": "Update Makefile with proper Wails commands",
-    "status": "backlog",
-    "priority": "high",
-    "deps": [
-      2
-    ],
-    "parent": null
-  },
-  {
     "id": 4,
     "title": "Install UI dependencies (Tailwind, Headless UI, Framer Motion)",
     "status": "done",
@@ -442,7 +432,7 @@
   {
     "id": 64,
     "title": "We are adding a new section to the dashboard - a plan section (and the kanban board is the task section).  Plan for now will just be a simple markdown formatted and editable view of plan.md.",
-    "status": "pending_review",
+    "status": "done",
     "priority": "medium",
     "deps": [],
     "parent": null
@@ -450,7 +440,23 @@
   {
     "id": 65,
     "title": "Add a new page to the dashboard that includes a terminal that can run claude code.  Also include a view that monitors the information in agent_status.sh",
+    "status": "done",
+    "priority": "medium",
+    "deps": [],
+    "parent": null
+  },
+  {
+    "id": 66,
+    "title": "Add keyboard shortcuts to switch between task|plan|code tabs: cmd-shift-[ and cmd-shift-], add sane behavior for arrow keys (moves between cards when not focused, but does as intended when focused on terminal or text)",
     "status": "todo",
+    "priority": "medium",
+    "deps": [],
+    "parent": null
+  },
+  {
+    "id": 67,
+    "title": "Add settings menu that allows path customization - have sound path handling for use in multiple repos with wide distribution",
+    "status": "pending_review",
     "priority": "medium",
     "deps": [],
     "parent": null

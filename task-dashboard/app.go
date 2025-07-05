@@ -18,6 +18,7 @@ import (
 	"github.com/creack/pty"
 	"github.com/gorilla/websocket"
 	"github.com/google/uuid"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // Task represents a single task in the kanban board
@@ -75,54 +76,58 @@ type AgentStatusInfo struct {
 
 // App struct
 type App struct {
-	ctx        context.Context
-	taskFile   string
-	mu         sync.RWMutex
-	tasks      []Task
-	upgrader   websocket.Upgrader
-	terminals  map[string]*Terminal
-	terminalMu sync.RWMutex
-	wsStarted  sync.Once
+	ctx          context.Context
+	taskFile     string
+	mu           sync.RWMutex
+	tasks        []Task
+	upgrader     websocket.Upgrader
+	terminals    map[string]*Terminal
+	terminalMu   sync.RWMutex
+	wsStarted    sync.Once
+	configMgr    *ConfigManager
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
-	// Get the user's home directory for a more reliable path
-	homeDir, err := os.UserHomeDir()
+	// Initialize configuration manager
+	configMgr, err := NewConfigManager()
 	if err != nil {
-		log.Printf("Error getting home directory: %v", err)
-		homeDir = "."
+		log.Printf("Error initializing config manager: %v", err)
+		// Fall back to old behavior if config fails
+		return newAppWithoutConfig()
 	}
 	
-	// Try multiple possible locations for the task.json file
-	possiblePaths := []string{
-		// Try the project directory in repos
-		filepath.Join(homeDir, "repos", "cc_task_dash", "plan", "task.json"),
-		// Try current working directory
-		filepath.Join(".", "plan", "task.json"),
-		// Try parent directory
-		filepath.Join("..", "plan", "task.json"),
-		// Try relative to executable
-		filepath.Join("../../plan", "task.json"),
-		// Fallback: create in user documents
-		filepath.Join(homeDir, "Documents", "TaskDashboard", "task.json"),
+	// Get active repository from config
+	activeRepo, err := configMgr.GetActiveRepository()
+	if err != nil {
+		log.Printf("Error getting active repository: %v", err)
+		// Fall back to old behavior
+		return newAppWithoutConfig()
 	}
 	
-	var taskFile string
-	found := false
+	taskFile := filepath.Join(activeRepo.Path, "plan", "task.json")
 	
-	for _, path := range possiblePaths {
-		if _, err := os.Stat(path); err == nil {
-			taskFile = path
-			found = true
-			break
-		}
+	app := &App{
+		taskFile:  taskFile,
+		tasks:     []Task{},
+		upgrader: websocket.Upgrader{
+			CheckOrigin: func(r *http.Request) bool {
+				return true // Allow all origins for development
+			},
+		},
+		terminals: make(map[string]*Terminal),
+		configMgr: configMgr,
 	}
 	
-	// If no existing file found, use the Documents fallback
-	if !found {
-		taskFile = filepath.Join(homeDir, "Documents", "TaskDashboard", "task.json")
-	}
+	return app
+}
+
+// newAppWithoutConfig creates an app without configuration (fallback)
+func newAppWithoutConfig() *App {
+	// Create a temporary config manager to reuse detection logic
+	tempConfigMgr := &ConfigManager{}
+	repo := tempConfigMgr.detectCurrentRepository()
+	taskFile := filepath.Join(repo.Path, "plan", "task.json")
 
 	app := &App{
 		taskFile:  taskFile,
@@ -133,6 +138,7 @@ func NewApp() *App {
 			},
 		},
 		terminals: make(map[string]*Terminal),
+		configMgr: nil,
 	}
 	
 	return app
@@ -1009,4 +1015,129 @@ func (a *App) sendTerminalHistory(terminal *Terminal) {
 	}
 	
 	a.logInfo(fmt.Sprintf("Sent %d lines of history to terminal %s", len(history), terminal.ID))
+}
+
+// Configuration API Methods
+
+// GetConfig returns the current configuration
+func (a *App) GetConfig() (*Config, error) {
+	if a.configMgr == nil {
+		return nil, fmt.Errorf("configuration not initialized")
+	}
+	return a.configMgr.GetConfig(), nil
+}
+
+// GetRepositories returns all configured repositories
+func (a *App) GetRepositories() ([]Repository, error) {
+	if a.configMgr == nil {
+		return nil, fmt.Errorf("configuration not initialized")
+	}
+	return a.configMgr.GetConfig().Repositories, nil
+}
+
+// AddRepository adds a new repository to the configuration
+func (a *App) AddRepository(name, path string) (*Repository, error) {
+	if a.configMgr == nil {
+		return nil, fmt.Errorf("configuration not initialized")
+	}
+	
+	repo, err := a.configMgr.AddRepository(name, path)
+	if err != nil {
+		a.logError(fmt.Sprintf("Failed to add repository: %s", path), err)
+		return nil, err
+	}
+	
+	a.logInfo(fmt.Sprintf("Added repository: %s at %s", name, path))
+	return repo, nil
+}
+
+// RemoveRepository removes a repository from the configuration
+func (a *App) RemoveRepository(id string) error {
+	if a.configMgr == nil {
+		return fmt.Errorf("configuration not initialized")
+	}
+	
+	err := a.configMgr.RemoveRepository(id)
+	if err != nil {
+		a.logError(fmt.Sprintf("Failed to remove repository: %s", id), err)
+		return err
+	}
+	
+	a.logInfo(fmt.Sprintf("Removed repository: %s", id))
+	return nil
+}
+
+// SetActiveRepository switches the active repository
+func (a *App) SetActiveRepository(id string) error {
+	if a.configMgr == nil {
+		return fmt.Errorf("configuration not initialized")
+	}
+	
+	err := a.configMgr.SetActiveRepository(id)
+	if err != nil {
+		a.logError(fmt.Sprintf("Failed to set active repository: %s", id), err)
+		return err
+	}
+	
+	// Update the task file path
+	activeRepo, err := a.configMgr.GetActiveRepository()
+	if err != nil {
+		return err
+	}
+	
+	a.mu.Lock()
+	a.taskFile = filepath.Join(activeRepo.Path, "plan", "task.json")
+	a.mu.Unlock()
+	
+	// Reload tasks from new repository
+	if err := a.loadTasks(); err != nil {
+		a.logError("Failed to load tasks from new repository", err)
+		return fmt.Errorf("failed to load tasks from new repository: %v", err)
+	}
+	
+	a.logInfo(fmt.Sprintf("Switched to repository: %s", activeRepo.Name))
+	return nil
+}
+
+// ValidateRepositoryPath validates a repository path
+func (a *App) ValidateRepositoryPath(path string) (*RepositoryInfo, error) {
+	info, err := ValidateRepository(path)
+	if err != nil {
+		a.logError(fmt.Sprintf("Failed to validate repository: %s", path), err)
+		return nil, err
+	}
+	
+	return info, nil
+}
+
+// FindRepositories searches for repositories in a directory
+func (a *App) FindRepositories(searchPath string) ([]Repository, error) {
+	repos, err := FindRepositoriesInDirectory(searchPath)
+	if err != nil {
+		a.logError(fmt.Sprintf("Failed to find repositories in: %s", searchPath), err)
+		return nil, err
+	}
+	
+	a.logInfo(fmt.Sprintf("Found %d repositories in %s", len(repos), searchPath))
+	return repos, nil
+}
+
+// OpenDirectoryDialog opens a directory selection dialog
+func (a *App) OpenDirectoryDialog() (string, error) {
+	if a.ctx == nil {
+		return "", fmt.Errorf("context not available")
+	}
+	
+	// Use Wails runtime to open directory dialog
+	selectedPath, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select Repository Directory",
+	})
+	
+	if err != nil {
+		a.logError("Failed to open directory dialog", err)
+		return "", err
+	}
+	
+	a.logInfo(fmt.Sprintf("Selected directory: %s", selectedPath))
+	return selectedPath, nil
 }
