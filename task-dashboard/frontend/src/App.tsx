@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, FileText, Terminal } from 'lucide-react';
+import { LayoutDashboard, FileText, Terminal, Settings } from 'lucide-react';
 import KanbanBoard from './components/KanbanBoard';
 import PlanView from './components/PlanView';
 import CodeView from './components/CodeView';
+import SettingsView from './components/SettingsView';
+import RepositorySwitcher from './components/RepositorySwitcher';
 
-type ViewType = 'tasks' | 'plan' | 'code';
+type ViewType = 'tasks' | 'plan' | 'code' | 'settings';
 
 function App() {
     const [currentView, setCurrentView] = useState<ViewType>('tasks');
@@ -23,7 +25,10 @@ function App() {
                 <div className="px-6 py-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-6">
-                            <h1 className="text-2xl font-bold text-gray-900">Task Dashboard</h1>
+                            <div className="flex items-center space-x-4">
+                                <h1 className="text-2xl font-bold text-gray-900">Task Dashboard</h1>
+                                <RepositorySwitcher />
+                            </div>
                             
                             {/* Navigation tabs */}
                             <nav className="flex space-x-1">
@@ -60,6 +65,17 @@ function App() {
                                     <Terminal className="w-4 h-4" />
                                     <span>Code</span>
                                 </button>
+                                <button
+                                    onClick={() => setCurrentView('settings')}
+                                    className={`flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                                        currentView === 'settings'
+                                            ? 'bg-primary-100 text-primary-700'
+                                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                                    }`}
+                                >
+                                    <Settings className="w-4 h-4" />
+                                    <span>Settings</span>
+                                </button>
                             </nav>
                         </div>
                         
@@ -83,8 +99,10 @@ function App() {
                         <KanbanBoard />
                     ) : currentView === 'plan' ? (
                         <PlanView onError={setError} onSave={handleSave} />
-                    ) : (
+                    ) : currentView === 'code' ? (
                         <CodeView />
+                    ) : (
+                        <SettingsView />
                     )}
                 </motion.div>
             </main>
