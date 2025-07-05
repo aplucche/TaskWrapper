@@ -28,6 +28,7 @@ type Repository struct {
 type ConfigManager struct {
 	configPath string
 	config     *Config
+	repoUtils  *RepositoryUtils
 }
 
 // NewConfigManager creates a new configuration manager
@@ -41,6 +42,7 @@ func NewConfigManager() (*ConfigManager, error) {
 	
 	cm := &ConfigManager{
 		configPath: configPath,
+		repoUtils:  &RepositoryUtils{},
 	}
 	
 	if err := cm.Load(); err != nil {
@@ -149,17 +151,10 @@ func (cm *ConfigManager) detectCurrentRepository() Repository {
 	
 	// Strategy 2: Search common development directories only as fallback
 	homeDir, _ := os.UserHomeDir()
-	searchDirs := []string{
-		filepath.Join(homeDir, "repos"),
-		filepath.Join(homeDir, "projects"),
-		filepath.Join(homeDir, "code"),
-		filepath.Join(homeDir, "workspace"),
-		filepath.Join(homeDir, "dev"),
-		filepath.Join(homeDir, "Documents"),
-	}
+	searchDirs := cm.repoUtils.GetCommonSearchDirectories(homeDir)
 	
 	for _, searchDir := range searchDirs {
-		if found := cm.findFirstRepositoryInDirectory(searchDir); found != "" {
+		if found := cm.repoUtils.FindFirstRepositoryInDirectory(searchDir); found != "" {
 			return Repository{
 				ID:      generateID(),
 				Name:    GetRepositoryName(found),
@@ -186,7 +181,7 @@ func (cm *ConfigManager) findRepositoryRootFromPath(startPath string) string {
 	
 	for {
 		// Check if this is a valid repository (has plan/task.json)
-		if cm.isValidRepository(path) {
+		if cm.repoUtils.IsValidRepository(path) {
 			return path
 		}
 		
@@ -202,33 +197,6 @@ func (cm *ConfigManager) findRepositoryRootFromPath(startPath string) string {
 	return ""
 }
 
-// findRepositoryContainingPath finds a repository that contains the given path
-// This is more specific than searching all directories
-func (cm *ConfigManager) findRepositoryContainingPath(targetPath string) string {
-	// Walk up from the target path and check each level
-	path := targetPath
-	
-	for {
-		// Check if this directory is a valid repository
-		if cm.isValidRepository(path) {
-			// Make sure the target path is actually within this repository
-			relPath, err := filepath.Rel(path, targetPath)
-			if err == nil && !strings.HasPrefix(relPath, "..") {
-				return path
-			}
-		}
-		
-		// Move up one directory
-		parent := filepath.Dir(path)
-		if parent == path {
-			// Reached filesystem root
-			break
-		}
-		path = parent
-	}
-	
-	return ""
-}
 
 // GetConfig returns the current configuration
 func (cm *ConfigManager) GetConfig() *Config {
@@ -359,52 +327,3 @@ func generateID() string {
 	return fmt.Sprintf("%d", time.Now().UnixNano())
 }
 
-// isValidRepository checks if a directory contains a valid task dashboard repository
-func (cm *ConfigManager) isValidRepository(path string) bool {
-	// Check if path exists
-	if _, err := os.Stat(path); err != nil {
-		return false
-	}
-	
-	// Check if plan/task.json exists
-	taskFile := filepath.Join(path, "plan", "task.json")
-	if _, err := os.Stat(taskFile); err != nil {
-		return false
-	}
-	
-	return true
-}
-
-// findFirstRepositoryInDirectory finds the first valid repository in a directory
-func (cm *ConfigManager) findFirstRepositoryInDirectory(searchDir string) string {
-	if _, err := os.Stat(searchDir); err != nil {
-		return ""
-	}
-	
-	entries, err := os.ReadDir(searchDir)
-	if err != nil {
-		return ""
-	}
-	
-	for _, entry := range entries {
-		if entry.IsDir() {
-			// Skip hidden directories and common non-project directories
-			name := entry.Name()
-			if strings.HasPrefix(name, ".") || 
-			   name == "node_modules" || 
-			   name == "vendor" || 
-			   name == "target" || 
-			   name == "dist" || 
-			   name == "build" {
-				continue
-			}
-			
-			candidatePath := filepath.Join(searchDir, name)
-			if cm.isValidRepository(candidatePath) {
-				return candidatePath
-			}
-		}
-	}
-	
-	return ""
-}

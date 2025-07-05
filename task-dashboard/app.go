@@ -124,8 +124,10 @@ func NewApp() *App {
 
 // newAppWithoutConfig creates an app without configuration (fallback)
 func newAppWithoutConfig() *App {
-	// Use the same smart detection logic as the config manager
-	taskFile := detectTaskFileWithoutConfig()
+	// Create a temporary config manager to reuse detection logic
+	tempConfigMgr := &ConfigManager{}
+	repo := tempConfigMgr.detectCurrentRepository()
+	taskFile := filepath.Join(repo.Path, "plan", "task.json")
 
 	app := &App{
 		taskFile:  taskFile,
@@ -140,92 +142,6 @@ func newAppWithoutConfig() *App {
 	}
 	
 	return app
-}
-
-// detectTaskFileWithoutConfig detects task file location without configuration manager
-func detectTaskFileWithoutConfig() string {
-	// Get current working directory where app was launched
-	cwd, err := os.Getwd()
-	if err != nil {
-		cwd = "."
-	}
-	
-	// Strategy 1: Check current directory
-	taskFile := filepath.Join(cwd, "plan", "task.json")
-	if _, err := os.Stat(taskFile); err == nil {
-		return taskFile
-	}
-	
-	// Strategy 2: Walk up directory tree
-	path := cwd
-	for {
-		taskFile := filepath.Join(path, "plan", "task.json")
-		if _, err := os.Stat(taskFile); err == nil {
-			return taskFile
-		}
-		
-		// Move up one directory
-		parent := filepath.Dir(path)
-		if parent == path {
-			// Reached filesystem root
-			break
-		}
-		path = parent
-	}
-	
-	// Strategy 3: Search common development directories
-	homeDir, _ := os.UserHomeDir()
-	searchDirs := []string{
-		filepath.Join(homeDir, "repos"),
-		filepath.Join(homeDir, "projects"),
-		filepath.Join(homeDir, "code"),
-		filepath.Join(homeDir, "workspace"),
-		filepath.Join(homeDir, "dev"),
-		filepath.Join(homeDir, "Documents"),
-	}
-	
-	for _, searchDir := range searchDirs {
-		if found := findFirstTaskFileInDirectory(searchDir); found != "" {
-			return found
-		}
-	}
-	
-	// Strategy 4: Fallback
-	return filepath.Join(homeDir, "Documents", "TaskDashboard", "task.json")
-}
-
-// findFirstTaskFileInDirectory finds the first task.json in a directory
-func findFirstTaskFileInDirectory(searchDir string) string {
-	if _, err := os.Stat(searchDir); err != nil {
-		return ""
-	}
-	
-	entries, err := os.ReadDir(searchDir)
-	if err != nil {
-		return ""
-	}
-	
-	for _, entry := range entries {
-		if entry.IsDir() {
-			// Skip hidden directories and common non-project directories
-			name := entry.Name()
-			if strings.HasPrefix(name, ".") || 
-			   name == "node_modules" || 
-			   name == "vendor" || 
-			   name == "target" || 
-			   name == "dist" || 
-			   name == "build" {
-				continue
-			}
-			
-			candidatePath := filepath.Join(searchDir, name, "plan", "task.json")
-			if _, err := os.Stat(candidatePath); err == nil {
-				return candidatePath
-			}
-		}
-	}
-	
-	return ""
 }
 
 // startup is called when the app starts. The context is saved
