@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -13,17 +14,20 @@ import (
 
 // AgentService handles Claude agent operations and Git branch management
 type AgentService struct {
-	projectRoot string
-	logger      Logger
-	mu          sync.RWMutex
-	ctx         context.Context
+	projectRoot   string
+	logger        Logger
+	mu            sync.RWMutex
+	ctx           context.Context
+	pathValidator *PathValidator
 }
 
 // NewAgentService creates a new agent service
 func NewAgentService(projectRoot string, logger Logger) *AgentService {
+	securityConfig := DefaultSecurityConfig()
 	return &AgentService{
-		projectRoot: projectRoot,
-		logger:      logger,
+		projectRoot:   projectRoot,
+		logger:        logger,
+		pathValidator: NewPathValidator(securityConfig, logger),
 	}
 }
 
@@ -45,19 +49,45 @@ func (as *AgentService) LaunchClaudeAgent(task Task) error {
 	projectRoot := as.projectRoot
 	as.mu.RUnlock()
 
+	// Validate project root path
+	validRoot, err := as.pathValidator.ValidatePath(projectRoot)
+	if err != nil {
+		return fmt.Errorf("invalid project root: %w", err)
+	}
+
 	// Use the agent_spawn.sh script
-	scriptPath := filepath.Join(projectRoot, "plan", "helpers_and_tools", "agent_spawn.sh")
+	scriptPath := filepath.Join(validRoot, "plan", "helpers_and_tools", "agent_spawn.sh")
 	
-	// Create the command with task ID and title as arguments
-	cmd := exec.Command(scriptPath, strconv.Itoa(task.ID), task.Title)
-	cmd.Dir = projectRoot
+	// Validate script path
+	validScript, err := as.pathValidator.ValidateExecutable(scriptPath)
+	if err != nil {
+		return fmt.Errorf("invalid script path: %w", err)
+	}
 	
-	// Add context cancellation if available
-	if as.ctx != nil {
-		ctx, cancel := context.WithCancel(as.ctx)
-		defer cancel()
-		cmd = exec.CommandContext(ctx, scriptPath, strconv.Itoa(task.ID), task.Title)
-		cmd.Dir = projectRoot
+	// Sanitize task title to prevent command injection
+	sanitizedTitle := as.pathValidator.SanitizeFilename(task.Title)
+	
+	// Create command with timeout context
+	ctx := as.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	
+	// Set a reasonable timeout for agent spawning (30 seconds)
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	
+	// Create the command with validated inputs
+	cmd := exec.CommandContext(ctx, validScript, strconv.Itoa(task.ID), sanitizedTitle)
+	cmd.Dir = validRoot
+	
+	// Set restricted environment
+	cmd.Env = []string{
+		"PATH=/usr/local/bin:/usr/bin:/bin",
+		"HOME=" + os.Getenv("HOME"),
+		"USER=" + os.Getenv("USER"),
+		"TASK_ID=" + strconv.Itoa(task.ID),
+		"TASK_TITLE=" + sanitizedTitle,
 	}
 	
 	// Log the launch

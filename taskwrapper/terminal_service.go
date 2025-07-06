@@ -17,35 +17,31 @@ import (
 
 // TerminalService handles terminal session management and WebSocket connections
 type TerminalService struct {
-	terminals   map[string]*Terminal
-	mu          sync.RWMutex
-	wsStarted   sync.Once
-	upgrader    websocket.Upgrader
-	logger      Logger
-	ctx         context.Context
+	terminals       map[string]*Terminal
+	mu              sync.RWMutex
+	wsStarted       sync.Once
+	upgrader        websocket.Upgrader
+	logger          Logger
+	ctx             context.Context
+	originValidator *OriginValidator
 }
 
 // NewTerminalService creates a new terminal service
 func NewTerminalService(logger Logger, allowedOrigins []string) *TerminalService {
+	originValidator := NewOriginValidator(allowedOrigins, logger)
+	
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
-			if len(allowedOrigins) == 0 {
-				return true // Allow all origins if none specified (development mode)
-			}
 			origin := r.Header.Get("Origin")
-			for _, allowed := range allowedOrigins {
-				if origin == allowed {
-					return true
-				}
-			}
-			return false
+			return originValidator.ValidateOrigin(origin)
 		},
 	}
 
 	return &TerminalService{
-		terminals: make(map[string]*Terminal),
-		upgrader:  upgrader,
-		logger:    logger,
+		terminals:       make(map[string]*Terminal),
+		upgrader:        upgrader,
+		logger:          logger,
+		originValidator: originValidator,
 	}
 }
 
@@ -141,13 +137,24 @@ func (ts *TerminalService) HandleWebSocket(w http.ResponseWriter, r *http.Reques
 
 // createTerminal creates a new terminal process with PTY
 func (ts *TerminalService) createTerminal(terminalID string, conn *websocket.Conn) (*Terminal, error) {
-	// Create a new shell process
-	cmd := exec.Command("/bin/bash")
+	// Use context for process lifecycle management
+	ctx := ts.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	
-	// Set environment variables
-	cmd.Env = append(os.Environ(),
+	// Create a new shell process with context
+	cmd := exec.CommandContext(ctx, "/bin/bash")
+	
+	// Set restricted environment variables
+	cmd.Env = []string{
 		"TERM=xterm-256color",
-	)
+		"PATH=/usr/local/bin:/usr/bin:/bin",
+		"HOME=" + os.Getenv("HOME"),
+		"USER=" + os.Getenv("USER"),
+		"LANG=en_US.UTF-8",
+		"SHELL=/bin/bash",
+	}
 	
 	// Start the command with a PTY
 	ptmx, err := pty.Start(cmd)

@@ -181,6 +181,7 @@ type App struct {
 	agentService    AgentServiceInterface
 	configService   ConfigServiceInterface
 	logger          Logger
+	errorHandler    *ErrorHandler
 }
 
 // NewApp creates a new App application struct with dependency injection
@@ -212,7 +213,9 @@ func NewApp() *App {
 	taskFile := filepath.Join(activeRepo.Path, "plan", "task.json")
 	taskService := NewTaskService(taskFile, logger)
 	
-	terminalService := NewTerminalService(logger, []string{}) // Allow all origins for development
+	// Get security config
+	securityConfig := DefaultSecurityConfig()
+	terminalService := NewTerminalService(logger, securityConfig.AllowedOrigins)
 	
 	agentService := NewAgentService(activeRepo.Path, logger)
 	
@@ -222,6 +225,7 @@ func NewApp() *App {
 		agentService:    agentService,
 		configService:   configService,
 		logger:          logger,
+		errorHandler:    NewErrorHandler(logger),
 	}
 	
 	return app
@@ -241,7 +245,9 @@ func newAppWithoutConfig(logger Logger) *App {
 	taskFile := filepath.Join(repo.Path, "plan", "task.json")
 	taskService := NewTaskService(taskFile, logger)
 	
-	terminalService := NewTerminalService(logger, []string{}) // Allow all origins for development
+	// Get security config
+	securityConfig := DefaultSecurityConfig()
+	terminalService := NewTerminalService(logger, securityConfig.AllowedOrigins)
 	
 	agentService := NewAgentService(repo.Path, logger)
 	
@@ -251,6 +257,7 @@ func newAppWithoutConfig(logger Logger) *App {
 		agentService:    agentService,
 		configService:   nil, // No config service in fallback mode
 		logger:          logger,
+		errorHandler:    NewErrorHandler(logger),
 	}
 	
 	return app
@@ -296,45 +303,52 @@ func (a *App) UpdateTask(task Task) error {
 
 // MoveTask moves a task to a different status column
 func (a *App) MoveTask(taskID int, newStatus string) error {
-	// Get the task to check the old status
-	tasks := a.taskService.GetTasks()
-	var oldStatus TaskStatus
-	var updatedTask Task
-	found := false
-	
-	for _, task := range tasks {
-		if task.ID == taskID {
-			oldStatus = task.Status
-			updatedTask = task
-			status, err := ParseTaskStatus(newStatus)
-			if err != nil {
-				return err
+	// Wrap in error handler for panic recovery
+	return a.errorHandler.WithRecover(func() error {
+		// Get the task to check the old status
+		tasks := a.taskService.GetTasks()
+		var oldStatus TaskStatus
+		var updatedTask Task
+		found := false
+		
+		for _, task := range tasks {
+			if task.ID == taskID {
+				oldStatus = task.Status
+				updatedTask = task
+				status, err := ParseTaskStatus(newStatus)
+				if err != nil {
+					return ValidationError("invalid task status", err).
+						WithContext("task_id", taskID).
+						WithContext("new_status", newStatus)
+				}
+				updatedTask.Status = status
+				found = true
+				break
 			}
-			updatedTask.Status = status
-			found = true
-			break
 		}
-	}
-	
-	if !found {
-		return fmt.Errorf("task with ID %d not found", taskID)
-	}
-	
-	// Move the task
-	if err := a.taskService.MoveTask(taskID, newStatus); err != nil {
-		return err
-	}
-	
-	// Only launch Claude agent if moving from "todo" to "doing"
-	if oldStatus == StatusTodo && updatedTask.Status == StatusDoing {
-		go func() {
-			if err := a.agentService.LaunchClaudeAgent(updatedTask); err != nil {
-				a.logger.Error("Failed to launch Claude agent", err)
-			}
-		}()
-	}
-	
-	return nil
+		
+		if !found {
+			return NotFoundError("task not found", nil).
+				WithContext("task_id", taskID)
+		}
+		
+		// Move the task
+		if err := a.taskService.MoveTask(taskID, newStatus); err != nil {
+			return a.errorHandler.Handle(err)
+		}
+		
+		// Only launch Claude agent if moving from "todo" to "doing"
+		if oldStatus == StatusTodo && updatedTask.Status == StatusDoing {
+			go func() {
+				defer a.errorHandler.RecoverPanic()
+				if err := a.agentService.LaunchClaudeAgent(updatedTask); err != nil {
+					a.errorHandler.Handle(err)
+				}
+			}()
+		}
+		
+		return nil
+	})
 }
 
 // GetTasksByStatus returns tasks filtered by status
