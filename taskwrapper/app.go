@@ -18,12 +18,12 @@ import (
 
 // Task represents a single task in the kanban board
 type Task struct {
-	ID       int    `json:"id"`
-	Title    string `json:"title"`
-	Status   string `json:"status"`   // "backlog", "todo", "doing", "pending_review", "done"
-	Priority string `json:"priority"` // "high", "medium", "low"
-	Deps     []int  `json:"deps"`     // array of task IDs this task depends on
-	Parent   *int   `json:"parent"`   // parent task ID, null if top-level
+	ID       int          `json:"id"`
+	Title    string       `json:"title"`
+	Status   TaskStatus   `json:"status"`
+	Priority TaskPriority `json:"priority"`
+	Deps     []int        `json:"deps"`   // array of task IDs this task depends on
+	Parent   *int         `json:"parent"` // parent task ID, null if top-level
 }
 
 // Terminal represents a running terminal session
@@ -298,7 +298,7 @@ func (a *App) UpdateTask(task Task) error {
 func (a *App) MoveTask(taskID int, newStatus string) error {
 	// Get the task to check the old status
 	tasks := a.taskService.GetTasks()
-	var oldStatus string
+	var oldStatus TaskStatus
 	var updatedTask Task
 	found := false
 	
@@ -306,7 +306,11 @@ func (a *App) MoveTask(taskID int, newStatus string) error {
 		if task.ID == taskID {
 			oldStatus = task.Status
 			updatedTask = task
-			updatedTask.Status = newStatus
+			status, err := ParseTaskStatus(newStatus)
+			if err != nil {
+				return err
+			}
+			updatedTask.Status = status
 			found = true
 			break
 		}
@@ -322,7 +326,7 @@ func (a *App) MoveTask(taskID int, newStatus string) error {
 	}
 	
 	// Only launch Claude agent if moving from "todo" to "doing"
-	if oldStatus == "todo" && newStatus == "doing" {
+	if oldStatus == StatusTodo && updatedTask.Status == StatusDoing {
 		go func() {
 			if err := a.agentService.LaunchClaudeAgent(updatedTask); err != nil {
 				a.logger.Error("Failed to launch Claude agent", err)
@@ -347,7 +351,7 @@ func (a *App) ApproveTask(taskID int) error {
 	
 	for _, t := range tasks {
 		if t.ID == taskID {
-			if t.Status != "pending_review" {
+			if t.Status != StatusPendingReview {
 				return fmt.Errorf("task %d is not in pending_review status", taskID)
 			}
 			task = t
@@ -366,7 +370,7 @@ func (a *App) ApproveTask(taskID int) error {
 	}
 	
 	// Update task status to done
-	task.Status = "done"
+	task.Status = StatusDone
 	if err := a.taskService.UpdateTask(task); err != nil {
 		return fmt.Errorf("failed to update task status after approval: %v", err)
 	}
@@ -383,7 +387,7 @@ func (a *App) RejectTask(taskID int) error {
 	
 	for _, t := range tasks {
 		if t.ID == taskID {
-			if t.Status != "pending_review" {
+			if t.Status != StatusPendingReview {
 				return fmt.Errorf("task %d is not in pending_review status", taskID)
 			}
 			task = t
@@ -405,7 +409,7 @@ func (a *App) RejectTask(taskID int) error {
 	if task.Title != "" && !strings.HasPrefix(task.Title, "NOT MERGED: ") {
 		task.Title = "NOT MERGED: " + task.Title
 	}
-	task.Status = "done"
+	task.Status = StatusDone
 	
 	if err := a.taskService.UpdateTask(task); err != nil {
 		return fmt.Errorf("failed to update task status after rejection: %v", err)

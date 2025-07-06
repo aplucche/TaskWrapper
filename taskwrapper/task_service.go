@@ -4,25 +4,26 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 )
 
 // TaskService handles task-related operations
 type TaskService struct {
-	taskFile string
-	mu       sync.RWMutex
-	tasks    []Task
-	logger   Logger
+	taskFile  string
+	mu        sync.RWMutex
+	tasks     []Task
+	logger    Logger
+	fileUtils *FileUtils
 }
 
 // NewTaskService creates a new task service
 func NewTaskService(taskFile string, logger Logger) *TaskService {
 	return &TaskService{
-		taskFile: taskFile,
-		tasks:    []Task{},
-		logger:   logger,
+		taskFile:  taskFile,
+		tasks:     []Task{},
+		logger:    logger,
+		fileUtils: NewFileUtils(logger),
 	}
 }
 
@@ -37,7 +38,7 @@ func (ts *TaskService) LoadTasks() ([]Task, error) {
 		if os.IsNotExist(err) {
 			// Create empty task file
 			ts.tasks = []Task{}
-			if writeErr := ts.atomicWriteTasks(ts.tasks); writeErr != nil {
+			if writeErr := ts.fileUtils.AtomicWriteJSON(ts.taskFile, ts.tasks); writeErr != nil {
 				ts.logger.Error("Failed to create empty task file", writeErr)
 				return ts.tasks, writeErr
 			}
@@ -112,8 +113,10 @@ func (ts *TaskService) UpdateTask(task Task) error {
 
 // MoveTask moves a task to a different status column
 func (ts *TaskService) MoveTask(taskID int, newStatus string) error {
-	if newStatus != "backlog" && newStatus != "todo" && newStatus != "doing" && newStatus != "pending_review" && newStatus != "done" {
-		return fmt.Errorf("invalid status: %s", newStatus)
+	// Parse and validate the new status
+	status, err := ParseTaskStatus(newStatus)
+	if err != nil {
+		return err
 	}
 	
 	ts.mu.Lock()
@@ -121,11 +124,11 @@ func (ts *TaskService) MoveTask(taskID int, newStatus string) error {
 	
 	// Find and update the task status
 	found := false
-	var oldStatus string
+	var oldStatus TaskStatus
 	for i, task := range ts.tasks {
 		if task.ID == taskID {
 			oldStatus = task.Status
-			ts.tasks[i].Status = newStatus
+			ts.tasks[i].Status = status
 			found = true
 			break
 		}
@@ -149,9 +152,15 @@ func (ts *TaskService) GetTasksByStatus(status string) ([]Task, error) {
 	ts.mu.RLock()
 	defer ts.mu.RUnlock()
 	
+	// Parse the status string
+	taskStatus, err := ParseTaskStatus(status)
+	if err != nil {
+		return nil, err
+	}
+	
 	var filtered []Task
 	for _, task := range ts.tasks {
-		if task.Status == status {
+		if task.Status == taskStatus {
 			filtered = append(filtered, task)
 		}
 	}
@@ -185,10 +194,10 @@ func (ts *TaskService) validateTasks(tasks []Task) error {
 		if task.Title == "" {
 			return fmt.Errorf("task with ID %d has empty title", task.ID)
 		}
-		if task.Status != "backlog" && task.Status != "todo" && task.Status != "doing" && task.Status != "pending_review" && task.Status != "done" {
+		if !task.Status.Valid() {
 			return fmt.Errorf("task with ID %d has invalid status: %s", task.ID, task.Status)
 		}
-		if task.Priority != "high" && task.Priority != "medium" && task.Priority != "low" {
+		if !task.Priority.Valid() {
 			return fmt.Errorf("task with ID %d has invalid priority: %s", task.ID, task.Priority)
 		}
 	}
@@ -197,62 +206,22 @@ func (ts *TaskService) validateTasks(tasks []Task) error {
 
 // saveTasks persists the current in-memory tasks to disk
 func (ts *TaskService) saveTasks() error {
-	// Create backup before saving
-	if err := ts.createBackup(); err != nil {
-		ts.logger.Error("Failed to create backup", err)
-		return fmt.Errorf("failed to create backup: %v", err)
-	}
-	
-	// Atomic write
-	if err := ts.atomicWriteTasks(ts.tasks); err != nil {
-		return err
+	// Use FileUtils for atomic write with automatic backup
+	if err := ts.fileUtils.AtomicWriteJSON(ts.taskFile, ts.tasks); err != nil {
+		ts.logger.Error("Failed to save tasks", err)
+		return fmt.Errorf("failed to save tasks: %v", err)
 	}
 	
 	ts.logger.Info("Tasks saved successfully")
-	return nil
-}
-
-// atomicWriteTasks writes tasks to file atomically
-func (ts *TaskService) atomicWriteTasks(tasks []Task) error {
-	data, err := json.MarshalIndent(tasks, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal tasks: %v", err)
-	}
 	
-	// Ensure directory exists
-	dir := filepath.Dir(ts.taskFile)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("failed to create directory: %v", err)
-	}
-	
-	// Write to temporary file first
-	tmpFile := ts.taskFile + ".tmp"
-	if err := os.WriteFile(tmpFile, data, 0644); err != nil {
-		return fmt.Errorf("failed to write temporary file: %v", err)
-	}
-	
-	// Atomic rename
-	if err := os.Rename(tmpFile, ts.taskFile); err != nil {
-		os.Remove(tmpFile) // Clean up
-		return fmt.Errorf("failed to rename temporary file: %v", err)
-	}
+	// Clean up old backups (older than 7 days)
+	go func() {
+		pattern := ts.taskFile + ".backup.*"
+		if err := ts.fileUtils.CleanupOldBackups(pattern, 7*24*time.Hour); err != nil {
+			ts.logger.Error("Failed to cleanup old backups", err)
+		}
+	}()
 	
 	return nil
 }
 
-// createBackup creates a backup of the task file
-func (ts *TaskService) createBackup() error {
-	if _, err := os.Stat(ts.taskFile); os.IsNotExist(err) {
-		return nil // No file to backup
-	}
-	
-	timestamp := time.Now().Format("20060102_150405")
-	backupFile := ts.taskFile + ".backup." + timestamp
-	
-	data, err := os.ReadFile(ts.taskFile)
-	if err != nil {
-		return err
-	}
-	
-	return os.WriteFile(backupFile, data, 0644)
-}
