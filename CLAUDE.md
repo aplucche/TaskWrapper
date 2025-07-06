@@ -110,7 +110,7 @@ Integrated review workflow: `pending_review` tasks appear in Done column with ap
 
 ### Key Files and Directories
 ```
-task-dashboard/
+taskwrapper/
 ├── main.go                      # Wails app entry point
 ├── app.go                       # Go backend API (LoadTasks, SaveTasks, etc.)
 ├── frontend/
@@ -125,7 +125,7 @@ task-dashboard/
 │   ├── wailsjs/                 # Auto-generated Wails bindings
 │   └── package.json
 ├── build/bin/                   # Built executables
-│   └── task-dashboard.app       # macOS app bundle
+│   └── taskwrapper.app          # macOS app bundle
 └── wails.json                   # Wails configuration
 ```
 
@@ -157,7 +157,7 @@ make logs      # View application logs
 - **Playwright Testing**: Use `http://localhost:34115/` for complete functionality
 
 ### Building and Distribution
-- **Single Executable**: `make build` creates `task-dashboard.app` (8.1MB)
+- **Single Executable**: `make build` creates `taskwrapper.app` (8.1MB)
 - **Platform**: macOS (darwin/arm64) optimized for Apple Silicon
 - **Dependencies**: All assets embedded, no external requirements
 
