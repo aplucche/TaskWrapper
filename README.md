@@ -1,4 +1,4 @@
-# Task Dashboard
+# TaskWrapper
 
 A desktop kanban board that automatically launches Claude agents to complete tasks when moved to "In Progress".
 
@@ -31,7 +31,7 @@ make build    # Build standalone executable
 ## Project Structure
 
 ```
-task-dashboard/          # Wails desktop application
+taskwrapper/            # Wails desktop application
 ├── app.go              # Go backend with task CRUD operations
 ├── frontend/           # React TypeScript UI
 └── build/bin/          # Compiled 8.1MB standalone app

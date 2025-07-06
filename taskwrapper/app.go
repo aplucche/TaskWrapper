@@ -629,7 +629,7 @@ func (a *App) logToFile(level, message string) {
 	
 	// Format log entry
 	timestamp := now.Format("2006-01-02 15:04:05")
-	logEntry := fmt.Sprintf("[%s] %s task-dashboard: %s\n", timestamp, level, message)
+	logEntry := fmt.Sprintf("[%s] %s taskwrapper: %s\n", timestamp, level, message)
 	
 	// Append to log file
 	f, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)

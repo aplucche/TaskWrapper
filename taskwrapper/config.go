@@ -66,7 +66,7 @@ func getConfigDir() (string, error) {
 		return "", err
 	}
 	
-	configDir := filepath.Join(homeDir, ".config", "task-dashboard")
+	configDir := filepath.Join(homeDir, ".config", "taskwrapper")
 	
 	// Ensure directory exists
 	if err := os.MkdirAll(configDir, 0755); err != nil {
@@ -151,7 +151,7 @@ func (cm *ConfigManager) detectCurrentRepository() Repository {
 	// Strategy 2: No valid repository found - return empty repository
 	// This indicates the app should default to settings mode
 	homeDir, _ := os.UserHomeDir()
-	fallbackPath := filepath.Join(homeDir, "Documents", "TaskDashboard")
+	fallbackPath := filepath.Join(homeDir, "Documents", "TaskWrapper")
 	return Repository{
 		ID:      generateID(),
 		Name:    "No Repository",

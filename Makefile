@@ -1,9 +1,9 @@
-# --- Task Dashboard Makefile ---
+# --- TaskWrapper Makefile ---
 # variables
-APP     ?= task-dashboard
+APP     ?= taskwrapper
 LOGDIR   = logs
 LATEST   = $(shell ls $(LOGDIR)/universal_logs-*.log 2>/dev/null | sort | tail -1)
-WAILS_DIR = task-dashboard
+WAILS_DIR = taskwrapper
 PATH_WITH_GO = $(shell echo $$PATH:/usr/local/go/bin:$$HOME/go/bin)
 MAX_SUBAGENTS ?= 2
 

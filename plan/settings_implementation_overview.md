@@ -1,12 +1,12 @@
 # Settings & Repository Management Implementation
 
 ## Overview
-This document provides a comprehensive overview of the settings menu and multi-repository management feature implementation for the Task Dashboard application.
+This document provides a comprehensive overview of the settings menu and multi-repository management feature implementation for the TaskWrapper application.
 
 ## What Was Added
 
 ### 1. **Multi-Repository Configuration System**
-- **Config File**: `~/.config/task-dashboard/config.json`
+- **Config File**: `~/.config/taskwrapper/config.json`
 - **Structure**: Stores multiple repositories with active selection
 - **Persistence**: Automatic creation and atomic saves
 - **Backward Compatibility**: Graceful fallback to old path detection
@@ -186,8 +186,8 @@ This document provides a comprehensive overview of the settings menu and multi-r
 
 ## Conclusion
 
-The settings and multi-repository management feature successfully transforms the Task Dashboard from a single-project tool into a universal dashboard for all Claude Code projects. The implementation prioritizes user experience with intelligent defaults while providing power users the flexibility they need.
+The settings and multi-repository management feature successfully transforms TaskWrapper from a single-project tool into a universal dashboard for all Claude Code projects. The implementation prioritizes user experience with intelligent defaults while providing power users the flexibility they need.
 
 The architecture demonstrates excellent engineering practices with type safety, atomic operations, and graceful error handling. While there are areas for improvement, the foundation is solid and extensible for future enhancements.
 
-**Bottom Line**: This feature makes the Task Dashboard truly portable and production-ready for wide distribution.
+**Bottom Line**: This feature makes TaskWrapper truly portable and production-ready for wide distribution.

@@ -1,5 +1,5 @@
 
-# Task Dashboard Project Plan
+# TaskWrapper Project Plan
 
 ## Project Overview
 A standalone desktop application built with Wails (Go + React + TypeScript) that provides an editable kanban board interface for the project's task.json file. The application serves as a visual task management dashboard with drag-and-drop functionality, modern aesthetic design, and dual-mode operation (desktop app and web browser for testing).
@@ -67,7 +67,7 @@ The application includes a robust review workflow for `pending_review` tasks:
 
 ### Project Structure
 ```
-task-dashboard/
+taskwrapper/
 ├── main.go              # Wails app entry point
 ├── app.go               # Go backend API
 ├── frontend/
@@ -166,13 +166,13 @@ task-dashboard/
 ### Common Issues
 
 #### App Won't Open on macOS
-- **"App is damaged or incomplete"**: Run `xattr -d com.apple.quarantine path/to/task-dashboard.app`
+- **"App is damaged or incomplete"**: Run `xattr -d com.apple.quarantine path/to/taskwrapper.app`
 - **Missing executable**: Clean rebuild with `rm -rf build/ && make build`
 - **Permission denied**: Check if app bundle has proper executable permissions
 
 #### Task Loading Issues
 - **"Failed to load tasks"**: Check file paths in logs at `logs/universal_logs-*.log`
-- **Permission denied on directories**: App creates fallback in `~/Documents/TaskDashboard/`
+- **Permission denied on directories**: App creates fallback in `~/Documents/TaskWrapper/`
 - **Corrupted task.json**: Check backup files with `.backup.YYYYMMDD_HHMMSS` extension
 
 #### Development Issues
@@ -212,7 +212,7 @@ npm run build     # Test frontend compilation
 
 #### Standalone App
 - **Primary**: `~/repos/cc_task_dash/plan/task.json` (if exists)
-- **Fallback**: `~/Documents/TaskDashboard/task.json`
+- **Fallback**: `~/Documents/TaskWrapper/task.json`
 - **Logs**: Adjacent to task file in `logs/` subdirectory
 
 ## Future Enhancements

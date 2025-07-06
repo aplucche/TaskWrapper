@@ -92,7 +92,7 @@ func GetRepositoryName(path string) string {
 	name := filepath.Base(path)
 	
 	// If it's a generic name, try to get parent/child combination
-	genericNames := []string{".", "..", "plan", "task-dashboard", "cc_task_dash"}
+	genericNames := []string{".", "..", "plan", "taskwrapper", "cc_task_dash"}
 	for _, generic := range genericNames {
 		if strings.EqualFold(name, generic) {
 			parent := filepath.Base(filepath.Dir(path))

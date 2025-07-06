@@ -1,6 +1,6 @@
 # Helper Tools & Scripts
 
-This directory contains utility scripts for monitoring and managing the Task Dashboard ecosystem, including Claude agent automation.
+This directory contains utility scripts for monitoring and managing the TaskWrapper ecosystem, including Claude agent automation.
 
 ## Available Tools
 
@@ -19,7 +19,7 @@ make logs
 ---
 
 ### 2. `agent_status.sh` - Claude Agent Status Check
-Quick status check for Claude agents launched by the Task Dashboard.
+Quick status check for Claude agents launched by TaskWrapper.
 
 **Usage:**
 ```bash
@@ -65,7 +65,7 @@ Continuous monitoring of Claude agent progress using the universal logging syste
 
 ## Claude Agent Workflow
 
-When a task is moved from "todo" to "doing" in the Task Dashboard:
+When a task is moved from "todo" to "doing" in TaskWrapper:
 
 1. **Automatic Launch**: Dashboard launches Claude agent with:
    ```bash
@@ -96,9 +96,9 @@ When a task is moved from "todo" to "doing" in the Task Dashboard:
 All tools integrate with the universal logging system at `logs/universal_logs-YYYY-MM-DD.log`.
 
 **Key log patterns:**
-- `INFO task-dashboard: Launching Claude agent for task #XX` - Agent launch
-- `INFO task-dashboard: Task XX moved from todo to doing` - Status change
-- `INFO task-dashboard: Tasks saved successfully` - File updates
+- `INFO taskwrapper: Launching Claude agent for task #XX` - Agent launch
+- `INFO taskwrapper: Task XX moved from todo to doing` - Status change
+- `INFO taskwrapper: Tasks saved successfully` - File updates
 - `ERROR` - Any errors during operation
 - `WARN` - Warnings or potential issues
 

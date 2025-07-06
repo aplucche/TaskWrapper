@@ -67,7 +67,7 @@ function App() {
                     <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-6">
                             <div className="flex items-center space-x-4">
-                                <h1 className="text-2xl font-bold text-gray-900">Task Dashboard</h1>
+                                <h1 className="text-2xl font-bold text-gray-900">TaskWrapper</h1>
                                 <RepositorySwitcher />
                             </div>
                             

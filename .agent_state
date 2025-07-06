@@ -1,7 +1,7 @@
 status=busy
-pid=64559
-task_id=66
-task_title=Use the learnings in #65 and TERMINAL_DEBUG.md to implement a code tab.  Start fresh in a new branch
-started=1751663040
-started_human=Fri Jul  4 17:04:00 EDT 2025
+pid=63635
+task_id=68
+task_title=Rename to taskwrapper across entire repo and UI.
+started=1751814784
+started_human=Sun Jul  6 11:13:04 EDT 2025
 worktree=subagent1
