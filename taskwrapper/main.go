@@ -8,6 +8,12 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 )
 
+// Version information
+const (
+	AppVersion = "0.1.0"
+	AppName    = "TaskWrapper"
+)
+
 //go:embed all:frontend/dist
 var assets embed.FS
 
@@ -17,7 +23,7 @@ func main() {
 
 	// Create application with options
 	err := wails.Run(&options.App{
-		Title:  "taskwrapper",
+		Title:  AppName + " v" + AppVersion,
 		Width:  1024,
 		Height: 768,
 		AssetServer: &assetserver.Options{

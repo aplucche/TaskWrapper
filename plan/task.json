@@ -472,7 +472,7 @@
   {
     "id": 69,
     "title": "Backend refactoring: Extract god-struct into focused services, implement type safety, fix concurrency issues",
-    "status": "doing",
+    "status": "done",
     "priority": "high",
     "deps": [],
     "parent": null
