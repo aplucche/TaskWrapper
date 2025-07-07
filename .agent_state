@@ -1,7 +1,7 @@
 status=busy
-pid=63635
-task_id=68
-task_title=Rename to taskwrapper across entire repo and UI.
-started=1751814784
-started_human=Sun Jul  6 11:13:04 EDT 2025
+pid=71384
+task_id=71
+task_title=Update backend tests to reflect recent refactoring.  No hard coding and remember to keep minimal but high leverage tests.
+started=1751910129
+started_human=Mon Jul  7 13:42:09 EDT 2025
 worktree=subagent1

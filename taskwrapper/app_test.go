@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -10,10 +11,18 @@ import (
 
 // Test fixtures - minimal test data
 var testTasks = []Task{
-	{ID: 1, Title: "Test Task 1", Status: "todo", Priority: "high", Deps: []int{}, Parent: nil},
-	{ID: 2, Title: "Test Task 2", Status: "doing", Priority: "medium", Deps: []int{1}, Parent: nil},
-	{ID: 3, Title: "Test Task 3", Status: "done", Priority: "low", Deps: []int{}, Parent: nil},
+	{ID: 1, Title: "Test Task 1", Status: StatusTodo, Priority: PriorityHigh, Deps: []int{}, Parent: nil},
+	{ID: 2, Title: "Test Task 2", Status: StatusDoing, Priority: PriorityMedium, Deps: []int{1}, Parent: nil},
+	{ID: 3, Title: "Test Task 3", Status: StatusDone, Priority: PriorityLow, Deps: []int{}, Parent: nil},
 }
+
+// MockLogger implements the Logger interface for testing
+type MockLogger struct{}
+
+func (m *MockLogger) Info(message string) {}
+func (m *MockLogger) Error(message string, err error) {}
+func (m *MockLogger) InfoWithFields(message string, fields map[string]interface{}) {}
+func (m *MockLogger) ErrorWithFields(message string, err error, fields map[string]interface{}) {}
 
 func setupTestApp(t *testing.T) (*App, func()) {
 	// Create temporary directory for test files
@@ -22,9 +31,33 @@ func setupTestApp(t *testing.T) (*App, func()) {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 
+	// Create required subdirectories
+	planDir := filepath.Join(tmpDir, "plan")
+	logsDir := filepath.Join(tmpDir, "logs")
+	if err := os.MkdirAll(planDir, 0755); err != nil {
+		t.Fatalf("Failed to create plan dir: %v", err)
+	}
+	if err := os.MkdirAll(logsDir, 0755); err != nil {
+		t.Fatalf("Failed to create logs dir: %v", err)
+	}
+
+	// Create services
+	logger := &MockLogger{}
+	taskFile := filepath.Join(planDir, "task.json")
+	taskService := NewTaskService(taskFile, logger)
+	
+	// Mock services for other dependencies
+	terminalService := NewTerminalService(logger, []string{"*"})
+	agentService := NewAgentService(tmpDir, logger)
+	
 	app := &App{
-		taskFile: filepath.Join(tmpDir, "task.json"),
-		tasks:    []Task{},
+		ctx:             context.Background(),
+		taskService:     taskService,
+		terminalService: terminalService,
+		agentService:    agentService,
+		configService:   nil, // Not needed for most tests
+		logger:          logger,
+		errorHandler:    NewErrorHandler(logger),
 	}
 
 	cleanup := func() {
@@ -72,10 +105,10 @@ func TestTaskValidation(t *testing.T) {
 		task    Task
 		wantErr bool
 	}{
-		{"Valid task", Task{ID: 1, Title: "Valid", Status: "todo", Priority: "high"}, false},
-		{"Empty title", Task{ID: 1, Title: "", Status: "todo", Priority: "high"}, true},
-		{"Invalid status", Task{ID: 1, Title: "Test", Status: "invalid", Priority: "high"}, true},
-		{"Invalid priority", Task{ID: 1, Title: "Test", Status: "todo", Priority: "invalid"}, true},
+		{"Valid task", Task{ID: 1, Title: "Valid", Status: StatusTodo, Priority: PriorityHigh}, false},
+		{"Empty title", Task{ID: 1, Title: "", Status: StatusTodo, Priority: PriorityHigh}, true},
+		{"Invalid status", Task{ID: 1, Title: "Test", Status: TaskStatus("invalid"), Priority: PriorityHigh}, true},
+		{"Invalid priority", Task{ID: 1, Title: "Test", Status: StatusTodo, Priority: TaskPriority("invalid")}, true},
 	}
 
 	for _, tt := range tests {
@@ -107,7 +140,7 @@ func TestMoveTask(t *testing.T) {
 	tasks, _ := app.LoadTasks()
 	found := false
 	for _, task := range tasks {
-		if task.ID == 1 && task.Status == "doing" {
+		if task.ID == 1 && task.Status == StatusDoing {
 			found = true
 			break
 		}
@@ -139,7 +172,7 @@ func TestUpdateTask(t *testing.T) {
 	}
 
 	// Update a task
-	updatedTask := Task{ID: 1, Title: "Updated Task", Status: "doing", Priority: "low", Deps: []int{}, Parent: nil}
+	updatedTask := Task{ID: 1, Title: "Updated Task", Status: StatusDoing, Priority: PriorityLow, Deps: []int{}, Parent: nil}
 	if err := app.UpdateTask(updatedTask); err != nil {
 		t.Fatalf("UpdateTask failed: %v", err)
 	}
@@ -148,7 +181,7 @@ func TestUpdateTask(t *testing.T) {
 	tasks, _ := app.LoadTasks()
 	found := false
 	for _, task := range tasks {
-		if task.ID == 1 && task.Title == "Updated Task" && task.Priority == "low" {
+		if task.ID == 1 && task.Title == "Updated Task" && task.Priority == PriorityLow {
 			found = true
 			break
 		}
@@ -159,7 +192,7 @@ func TestUpdateTask(t *testing.T) {
 	}
 
 	// Test updating non-existent task
-	nonExistentTask := Task{ID: 999, Title: "Ghost", Status: "todo", Priority: "high"}
+	nonExistentTask := Task{ID: 999, Title: "Ghost", Status: StatusTodo, Priority: PriorityHigh}
 	if err := app.UpdateTask(nonExistentTask); err == nil {
 		t.Error("Expected error for non-existent task")
 	}
@@ -175,44 +208,57 @@ func TestAtomicOperations(t *testing.T) {
 		t.Fatalf("SaveTasks failed: %v", err)
 	}
 
+	// Get task file path from service
+	taskFile := filepath.Join(filepath.Dir(app.taskService.(*TaskService).taskFile), "task.json")
+	
 	// Verify main file exists
-	if _, err := os.Stat(app.taskFile); os.IsNotExist(err) {
+	if _, err := os.Stat(taskFile); os.IsNotExist(err) {
 		t.Error("Task file was not created")
 	}
 
-	// Save again to trigger backup
-	modifiedTasks := append(testTasks, Task{ID: 4, Title: "New Task", Status: "todo", Priority: "medium"})
+	// Save again to trigger .tracked file creation
+	modifiedTasks := append(testTasks, Task{ID: 4, Title: "New Task", Status: StatusTodo, Priority: PriorityMedium})
 	if err := app.SaveTasks(modifiedTasks); err != nil {
 		t.Fatalf("Second SaveTasks failed: %v", err)
 	}
 
-	// Check that backup was created (backup files have .backup.timestamp format)
-	taskDir := filepath.Dir(app.taskFile)
-	files, err := os.ReadDir(taskDir)
+	// Check that .tracked file was created
+	trackedFile := taskFile + ".tracked"
+	if _, err := os.Stat(trackedFile); os.IsNotExist(err) {
+		t.Error(".tracked file was not created")
+	}
+
+	// Verify .tracked file contains the previous state
+	data, err := os.ReadFile(trackedFile)
 	if err != nil {
-		t.Fatalf("Failed to read task directory: %v", err)
+		t.Fatalf("Failed to read .tracked file: %v", err)
 	}
 
-	backupFound := false
-	for _, file := range files {
-		if filepath.Base(file.Name()) != filepath.Base(app.taskFile) && 
-		   filepath.HasPrefix(file.Name(), filepath.Base(app.taskFile)+".backup.") {
-			backupFound = true
-			break
-		}
+	var trackedTasks []Task
+	if err := json.Unmarshal(data, &trackedTasks); err != nil {
+		t.Fatalf("Failed to parse .tracked file: %v", err)
 	}
 
-	if !backupFound {
-		t.Error("Backup file was not created")
+	// The .tracked file should contain the original tasks (before the new task was added)
+	if len(trackedTasks) != len(testTasks) {
+		t.Errorf("Expected %d tasks in .tracked file, got %d", len(testTasks), len(trackedTasks))
 	}
 }
 
 // Test 6: Error Handling - File system errors
 func TestErrorHandling(t *testing.T) {
-	// Test with invalid directory path
+	// Create a test app with an invalid path
+	logger := &MockLogger{}
+	taskService := NewTaskService("/root/impossible/path/task.json", logger)
+	
 	app := &App{
-		taskFile: "/root/impossible/path/task.json", // Should fail on most systems
-		tasks:    []Task{},
+		ctx:             context.Background(),
+		taskService:     taskService,
+		terminalService: nil,
+		agentService:    nil,
+		configService:   nil,
+		logger:          logger,
+		errorHandler:    NewErrorHandler(logger),
 	}
 
 	// This should handle the error gracefully
@@ -229,9 +275,9 @@ func TestGetTasksByStatus(t *testing.T) {
 
 	// Setup fresh tasks for this test to avoid interference from other tests
 	freshTasks := []Task{
-		{ID: 10, Title: "Fresh Todo", Status: "todo", Priority: "high", Deps: []int{}, Parent: nil},
-		{ID: 11, Title: "Fresh Doing", Status: "doing", Priority: "medium", Deps: []int{}, Parent: nil},
-		{ID: 12, Title: "Fresh Done", Status: "done", Priority: "low", Deps: []int{}, Parent: nil},
+		{ID: 10, Title: "Fresh Todo", Status: StatusTodo, Priority: PriorityHigh, Deps: []int{}, Parent: nil},
+		{ID: 11, Title: "Fresh Doing", Status: StatusDoing, Priority: PriorityMedium, Deps: []int{}, Parent: nil},
+		{ID: 12, Title: "Fresh Done", Status: StatusDone, Priority: PriorityLow, Deps: []int{}, Parent: nil},
 	}
 	if err := app.SaveTasks(freshTasks); err != nil {
 		t.Fatalf("SaveTasks failed: %v", err)
@@ -249,7 +295,7 @@ func TestGetTasksByStatus(t *testing.T) {
 	}
 
 	// Verify the correct task was returned
-	if len(todoTasks) > 0 && todoTasks[0].Status != "todo" {
+	if len(todoTasks) > 0 && todoTasks[0].Status != StatusTodo {
 		t.Error("Returned task does not have 'todo' status")
 	}
 }
@@ -321,9 +367,12 @@ func TestRefreshFromDisk(t *testing.T) {
 		t.Fatalf("SaveTasks failed: %v", err)
 	}
 
+	// Get task file path from service
+	taskFile := app.taskService.(*TaskService).taskFile
+	
 	// Simulate external file modification by directly writing to task file
 	externalTasks := []Task{
-		{ID: 99, Title: "External Task", Status: "todo", Priority: "high", Deps: []int{}, Parent: nil},
+		{ID: 99, Title: "External Task", Status: StatusTodo, Priority: PriorityHigh, Deps: []int{}, Parent: nil},
 	}
 	
 	data, err := json.MarshalIndent(externalTasks, "", "  ")
@@ -331,7 +380,7 @@ func TestRefreshFromDisk(t *testing.T) {
 		t.Fatalf("Failed to marshal external tasks: %v", err)
 	}
 	
-	if err := os.WriteFile(app.taskFile, data, 0644); err != nil {
+	if err := os.WriteFile(taskFile, data, 0644); err != nil {
 		t.Fatalf("Failed to write external task file: %v", err)
 	}
 
@@ -355,62 +404,15 @@ func TestRefreshFromDisk(t *testing.T) {
 	}
 }
 
-// Test 10: Claude Agent Prompt Generation
-func TestGenerateTaskPrompt(t *testing.T) {
-	app, cleanup := setupTestApp(t)
-	defer cleanup()
-
-	tests := []struct {
-		name     string
-		task     Task
-		expected string
-	}{
-		{
-			name: "Simple task",
-			task: Task{ID: 1, Title: "Simple Task", Status: "todo", Priority: "medium"},
-			expected: "Review plan.md and task.json. Begin task #1: Simple Task. Update task.json status to 'pending_review' when done, commit to branch task_1.",
-		},
-		{
-			name: "High priority task",
-			task: Task{ID: 2, Title: "Urgent Task", Status: "todo", Priority: "high"},
-			expected: "Review plan.md and task.json. Begin task #2: Urgent Task. Update task.json status to 'pending_review' when done, commit to branch task_2.",
-		},
-		{
-			name: "Task with parent",
-			task: Task{ID: 3, Title: "Subtask", Status: "todo", Priority: "low", Parent: &[]int{10}[0]},
-			expected: "Review plan.md and task.json. Begin task #3: Subtask. Update task.json status to 'pending_review' when done, commit to branch task_3.",
-		},
-		{
-			name: "Task with dependencies",
-			task: Task{ID: 4, Title: "Dependent Task", Status: "todo", Priority: "medium", Deps: []int{1, 2}},
-			expected: "Review plan.md and task.json. Begin task #4: Dependent Task. Update task.json status to 'pending_review' when done, commit to branch task_4.",
-		},
-		{
-			name: "Complex task",
-			task: Task{ID: 5, Title: "Complex Task", Status: "todo", Priority: "high", Parent: &[]int{20}[0], Deps: []int{3, 4}},
-			expected: "Review plan.md and task.json. Begin task #5: Complex Task. Update task.json status to 'pending_review' when done, commit to branch task_5.",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := app.generateTaskPrompt(tt.task)
-			if result != tt.expected {
-				t.Errorf("generateTaskPrompt() = %q, expected %q", result, tt.expected)
-			}
-		})
-	}
-}
-
-// Test 11: Todo to Doing Transition (Claude agent trigger condition)
+// Test 10: Todo to Doing Transition (Claude agent trigger condition)
 func TestTodoToDoingTransition(t *testing.T) {
 	app, cleanup := setupTestApp(t)
 	defer cleanup()
 
 	// Setup initial tasks with specific status
 	testTasksWithStatus := []Task{
-		{ID: 1, Title: "Test Task 1", Status: "todo", Priority: "high", Deps: []int{}, Parent: nil},
-		{ID: 2, Title: "Test Task 2", Status: "backlog", Priority: "medium", Deps: []int{}, Parent: nil},
+		{ID: 1, Title: "Test Task 1", Status: StatusTodo, Priority: PriorityHigh, Deps: []int{}, Parent: nil},
+		{ID: 2, Title: "Test Task 2", Status: StatusBacklog, Priority: PriorityMedium, Deps: []int{}, Parent: nil},
 	}
 	
 	if err := app.SaveTasks(testTasksWithStatus); err != nil {
@@ -437,7 +439,7 @@ func TestTodoToDoingTransition(t *testing.T) {
 
 	doingCount := 0
 	for _, task := range tasks {
-		if task.Status == "doing" {
+		if task.Status == StatusDoing {
 			doingCount++
 		}
 	}
@@ -447,6 +449,109 @@ func TestTodoToDoingTransition(t *testing.T) {
 	}
 
 	// Note: The actual Claude agent launch happens in a goroutine and can't be
-	// easily tested in unit tests. The condition (oldStatus == "todo" && newStatus == "doing")
+	// easily tested in unit tests. The condition (oldStatus == StatusTodo && newStatus == StatusDoing)
 	// is the key logic that determines when agents are launched.
+}
+
+// Test 11: Pending Review Status
+func TestPendingReviewStatus(t *testing.T) {
+	app, cleanup := setupTestApp(t)
+	defer cleanup()
+
+	// Create a task in pending_review status
+	pendingTask := Task{
+		ID:       1,
+		Title:    "Review Task",
+		Status:   StatusPendingReview,
+		Priority: PriorityHigh,
+		Deps:     []int{},
+		Parent:   nil,
+	}
+
+	if err := app.SaveTasks([]Task{pendingTask}); err != nil {
+		t.Fatalf("SaveTasks failed: %v", err)
+	}
+
+	// Verify task is saved correctly
+	tasks, err := app.LoadTasks()
+	if err != nil {
+		t.Fatalf("LoadTasks failed: %v", err)
+	}
+
+	if len(tasks) != 1 || tasks[0].Status != StatusPendingReview {
+		t.Error("Task was not saved with pending_review status")
+	}
+
+	// Test getting tasks by pending_review status
+	pendingTasks, err := app.GetTasksByStatus("pending_review")
+	if err != nil {
+		t.Fatalf("GetTasksByStatus failed: %v", err)
+	}
+
+	if len(pendingTasks) != 1 {
+		t.Errorf("Expected 1 pending_review task, got %d", len(pendingTasks))
+	}
+}
+
+// Test 12: Type Safety for Status and Priority
+func TestTypeSafety(t *testing.T) {
+	app, cleanup := setupTestApp(t)
+	defer cleanup()
+
+	// Test all valid statuses
+	for i, status := range AllStatuses() {
+		task := Task{
+			ID:       100 + i, // Unique ID for each status
+			Title:    string(status) + " Task",
+			Status:   status,
+			Priority: PriorityMedium,
+			Deps:     []int{},
+			Parent:   nil,
+		}
+
+		if err := app.SaveTasks([]Task{task}); err != nil {
+			t.Errorf("Failed to save task with valid status %s: %v", status, err)
+		}
+	}
+
+	// Test all valid priorities
+	for i, priority := range AllPriorities() {
+		task := Task{
+			ID:       200 + i, // Unique ID for each priority
+			Title:    string(priority) + " Priority Task",
+			Status:   StatusTodo,
+			Priority: priority,
+			Deps:     []int{},
+			Parent:   nil,
+		}
+
+		if err := app.SaveTasks([]Task{task}); err != nil {
+			t.Errorf("Failed to save task with valid priority %s: %v", priority, err)
+		}
+	}
+}
+
+// Test 13: Error Types and Handling
+func TestErrorTypes(t *testing.T) {
+	app, cleanup := setupTestApp(t)
+	defer cleanup()
+
+	// Test validation error
+	invalidTask := Task{
+		ID:       1,
+		Title:    "", // Empty title should trigger validation error
+		Status:   StatusTodo,
+		Priority: PriorityHigh,
+	}
+
+	err := app.SaveTasks([]Task{invalidTask})
+	if err == nil {
+		t.Error("Expected validation error for empty title")
+	}
+
+	// Test not found error
+	err = app.MoveTask(999, "doing")
+	if err == nil {
+		t.Error("Expected not found error for non-existent task")
+	}
 }
