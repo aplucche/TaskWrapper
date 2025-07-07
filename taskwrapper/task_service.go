@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"sync"
-	"time"
 )
 
 // TaskService handles task-related operations
@@ -206,21 +205,13 @@ func (ts *TaskService) validateTasks(tasks []Task) error {
 
 // saveTasks persists the current in-memory tasks to disk
 func (ts *TaskService) saveTasks() error {
-	// Use FileUtils for atomic write with automatic backup
+	// Use FileUtils for atomic write with .tracked file backup
 	if err := ts.fileUtils.AtomicWriteJSON(ts.taskFile, ts.tasks); err != nil {
 		ts.logger.Error("Failed to save tasks", err)
 		return fmt.Errorf("failed to save tasks: %v", err)
 	}
 	
 	ts.logger.Info("Tasks saved successfully")
-	
-	// Clean up old backups (older than 7 days)
-	go func() {
-		pattern := ts.taskFile + ".backup.*"
-		if err := ts.fileUtils.CleanupOldBackups(pattern, 7*24*time.Hour); err != nil {
-			ts.logger.Error("Failed to cleanup old backups", err)
-		}
-	}()
 	
 	return nil
 }

@@ -147,8 +147,15 @@ make logs      # View application logs
 1. Go backend reads `plan/task.json` on startup
 2. React frontend displays tasks as kanban columns (To Do, In Progress, Done)
 3. User interactions (drag/drop, edit, approve/reject) trigger Go API calls
-4. Changes saved atomically to `plan/task.json` with backup
+4. Changes saved atomically to `plan/task.json` with `.tracked` file backup
 5. All operations logged to `logs/universal_logs-*.log`
+
+### Backup Strategy
+- **Single .tracked Files**: `task.json.tracked` and `plan.md.tracked` serve as backups
+- **Git Integration**: Original files (`task.json`, `plan.md`) are untracked in git
+- **Atomic Operations**: All saves use temp file → rename for safety
+- **Recovery**: On save failure, automatically restores from `.tracked` file
+- **No Accumulation**: Single backup file instead of timestamped versions
 
 ### Web Testing
 - **Development**: `make dev` serves both desktop app and web version

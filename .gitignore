@@ -7,8 +7,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Task backups
+# Task files (keep untracked, use .tracked versions)
+plan/task.json
+plan/plan.md
+
+# Task backups (old system - to be removed)
 plan/task.json.backup.*
+plan/plan.md.backup.*
 
 # Agent state
 .agent_state

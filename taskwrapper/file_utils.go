@@ -21,13 +21,13 @@ func NewFileUtils(logger Logger) *FileUtils {
 	}
 }
 
-// AtomicWriteJSON writes JSON data atomically with automatic backup
+// AtomicWriteJSON writes JSON data atomically with .tracked file backup
 func (fu *FileUtils) AtomicWriteJSON(filePath string, data interface{}) error {
-	// Create backup first
-	backupPath, err := fu.CreateBackup(filePath)
-	if err != nil {
-		fu.logger.Error("Failed to create backup before write", err)
-		// Continue anyway - backup is nice to have but not critical
+	// Update .tracked file first
+	trackedPath := filePath + ".tracked"
+	if err := fu.UpdateTrackedFile(filePath, trackedPath); err != nil {
+		fu.logger.Error("Failed to update tracked file before write", err)
+		// Continue anyway - tracked file is nice to have but not critical
 	}
 
 	// Marshal data
@@ -38,12 +38,10 @@ func (fu *FileUtils) AtomicWriteJSON(filePath string, data interface{}) error {
 
 	// Write atomically
 	if err := fu.AtomicWrite(filePath, jsonData); err != nil {
-		// Attempt rollback if we have a backup
-		if backupPath != "" {
-			fu.logger.Info("Attempting rollback after write failure")
-			if rollbackErr := fu.Rollback(filePath, backupPath); rollbackErr != nil {
-				fu.logger.Error("Rollback failed", rollbackErr)
-			}
+		// Attempt rollback from .tracked file
+		fu.logger.Info("Attempting rollback after write failure")
+		if rollbackErr := fu.RestoreFromTracked(filePath, trackedPath); rollbackErr != nil {
+			fu.logger.Error("Rollback from tracked file failed", rollbackErr)
 		}
 		return err
 	}
@@ -85,49 +83,45 @@ func (fu *FileUtils) AtomicWrite(filePath string, data []byte) error {
 	return nil
 }
 
-// CreateBackup creates a timestamped backup of a file
-func (fu *FileUtils) CreateBackup(filePath string) (string, error) {
-	// Check if file exists
+// UpdateTrackedFile copies the current file to its .tracked version
+func (fu *FileUtils) UpdateTrackedFile(filePath, trackedPath string) error {
+	// Check if source file exists
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return "", nil // No file to backup
+		return nil // No file to track
 	}
 
-	// Generate backup filename
-	timestamp := time.Now().Format("20060102_150405")
-	backupPath := fmt.Sprintf("%s.backup.%s", filePath, timestamp)
-
-	// Copy file
-	if err := fu.CopyFile(filePath, backupPath); err != nil {
-		return "", fmt.Errorf("failed to create backup: %w", err)
+	// Copy file to .tracked version
+	if err := fu.CopyFile(filePath, trackedPath); err != nil {
+		return fmt.Errorf("failed to update tracked file: %w", err)
 	}
 
-	fu.logger.InfoWithFields("Backup created", map[string]interface{}{
+	fu.logger.InfoWithFields("Tracked file updated", map[string]interface{}{
 		"original": filePath,
-		"backup":   backupPath,
+		"tracked":  trackedPath,
 	})
 
-	return backupPath, nil
+	return nil
 }
 
-// Rollback restores a file from backup
-func (fu *FileUtils) Rollback(filePath, backupPath string) error {
-	if backupPath == "" || filePath == "" {
-		return fmt.Errorf("invalid file paths for rollback")
+// RestoreFromTracked restores a file from its .tracked version
+func (fu *FileUtils) RestoreFromTracked(filePath, trackedPath string) error {
+	if trackedPath == "" || filePath == "" {
+		return fmt.Errorf("invalid file paths for restore")
 	}
 
-	// Check if backup exists
-	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
-		return fmt.Errorf("backup file does not exist: %s", backupPath)
+	// Check if tracked file exists
+	if _, err := os.Stat(trackedPath); os.IsNotExist(err) {
+		return fmt.Errorf("tracked file does not exist: %s", trackedPath)
 	}
 
-	// Copy backup to original location
-	if err := fu.CopyFile(backupPath, filePath); err != nil {
-		return fmt.Errorf("failed to restore from backup: %w", err)
+	// Copy tracked file to original location
+	if err := fu.CopyFile(trackedPath, filePath); err != nil {
+		return fmt.Errorf("failed to restore from tracked file: %w", err)
 	}
 
-	fu.logger.InfoWithFields("Rollback completed", map[string]interface{}{
-		"file":   filePath,
-		"backup": backupPath,
+	fu.logger.InfoWithFields("Restored from tracked file", map[string]interface{}{
+		"file":    filePath,
+		"tracked": trackedPath,
 	})
 
 	return nil
@@ -165,37 +159,3 @@ func (fu *FileUtils) CopyFile(src, dst string) error {
 	return os.Chmod(dst, sourceInfo.Mode())
 }
 
-// CleanupOldBackups removes backup files older than the specified duration
-func (fu *FileUtils) CleanupOldBackups(pattern string, maxAge time.Duration) error {
-	files, err := filepath.Glob(pattern)
-	if err != nil {
-		return fmt.Errorf("failed to list backup files: %w", err)
-	}
-
-	cutoff := time.Now().Add(-maxAge)
-	removed := 0
-
-	for _, file := range files {
-		info, err := os.Stat(file)
-		if err != nil {
-			continue
-		}
-
-		if info.ModTime().Before(cutoff) {
-			if err := os.Remove(file); err != nil {
-				fu.logger.Error("Failed to remove old backup", err)
-			} else {
-				removed++
-			}
-		}
-	}
-
-	if removed > 0 {
-		fu.logger.InfoWithFields("Cleaned up old backups", map[string]interface{}{
-			"pattern": pattern,
-			"removed": removed,
-		})
-	}
-
-	return nil
-}

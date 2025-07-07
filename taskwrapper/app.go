@@ -464,19 +464,25 @@ func (a *App) SavePlan(content string) error {
 	}
 	
 	planFile := filepath.Join(activeRepoPath, "plan", "plan.md")
+	trackedFile := planFile + ".tracked"
 	a.logger.InfoWithFields("Saving plan", map[string]interface{}{
 		"plan_file": planFile,
 	})
 
-	// Create backup of plan.md
-	if err := createFileBackup(planFile); err != nil {
-		a.logger.Error("Failed to create backup of plan.md", err)
-		// Continue with save even if backup fails
+	// Update .tracked file first
+	fileUtils := NewFileUtils(a.logger)
+	if err := fileUtils.UpdateTrackedFile(planFile, trackedFile); err != nil {
+		a.logger.Error("Failed to update tracked file before write", err)
+		// Continue with save even if tracked update fails
 	}
 
-	// Write the new content
-	if err := writeFileContent(planFile, content); err != nil {
+	// Write the new content atomically
+	if err := fileUtils.AtomicWrite(planFile, []byte(content)); err != nil {
 		a.logger.Error("Failed to save plan.md", err)
+		// Attempt to restore from tracked file
+		if restoreErr := fileUtils.RestoreFromTracked(planFile, trackedFile); restoreErr != nil {
+			a.logger.Error("Failed to restore from tracked file", restoreErr)
+		}
 		return fmt.Errorf("failed to write plan.md: %w", err)
 	}
 
