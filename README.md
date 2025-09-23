@@ -1,23 +1,34 @@
 # TaskWrapper v0.1.0
 
-A desktop kanban board that automatically launches Claude agents to complete tasks when moved to "In Progress".
+A desktop kanban board that automatically launches Claude agents to complete tasks when card is moved to "In Progress".
 
 ## Key Features
 
 - **Visual Kanban Board**: Drag-and-drop tasks between Backlog, To Do, In Progress, Pending Review, and Done
-**Automatic Agent Task Execution**: Drag a task from "To Do" to "In Progress" and a Claude agent automatically spawns in an isolated git worktree to complete it autonomously. Moving task to "doing" triggers: `claude "Work on task #XX" --dangerously-skip-permissions` (Use at own risk!)
+- **Agent Task Execution**: Drag a task from "To Do" to "In Progress" and a Claude agent automatically spawns in an isolated git worktree to complete it autonomously. Moving task to "doing" triggers: `claude "Work on task #XX" --dangerously-skip-permissions` (Use at own risk!)
 - **Isolated Workspaces**: Each agent works in dedicated git worktree (`cc_task_dash-subagent1`, etc.)
 - **Review Workflow**: Agents commit to `task_XX` branches and mark tasks as "pending_review". Approve or reject from within app
-
-## Architecture Highlights
-
 - **Hybrid Desktop/Web**: Built with Wails (Go + React) - runs as native desktop app or web interface for testing
 - **Concurrent Agent System**: Manages multiple Claude agents working in parallel using git worktree pooling
-- **Unified Logging**: Single daily log file aggregates all system activity for easy observability
+
+___
+### Kanban Board
+
+![Board Section](static/board_img.png)
+___
+### Plan Editor
+
+![Plan Section](static/plan_img.png)
+
+___
+### Integrated Terminal
+
+![Terminal Section](static/terminal_img.png)
+
 
 ## v0.1.0 Release
 - First alpha release with core kanban and agent automation features
-- Production-ready single executable (~8MB). macOS only
+- Single executable (~8MB). macOS only
 
 ## Quick Start
 
