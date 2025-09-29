@@ -237,7 +237,7 @@
   {
     "id": 29,
     "title": "Add keyboard shortcuts for navigation",
-    "status": "backlog",
+    "status": "doing",
     "priority": "medium",
     "deps": [
       11
@@ -482,6 +482,46 @@
     "title": "Use the plan/dependency_upgrade_assessment.md for guidance.  Update dependencies.  Only follow the highest leverange and most necessary parts of the plan and revise if there are better ideas.",
     "status": "todo",
     "priority": "medium",
+    "deps": [],
+    "parent": null
+  },
+  {
+    "id": 71,
+    "title": "Update backend tests to reflect recent refactoring.  No hard coding and remember to keep minimal but high leverage tests.",
+    "status": "done",
+    "priority": "medium",
+    "deps": [],
+    "parent": null
+  },
+  {
+    "id": 72,
+    "title": "Implement Playwright E2E test suite covering drag-and-drop, task editing, and review workflow",
+    "status": "todo",
+    "priority": "high",
+    "deps": [],
+    "parent": null
+  },
+  {
+    "id": 73,
+    "title": "Add data persistence layer with versioned backups and undo/redo functionality",
+    "status": "todo",
+    "priority": "medium",
+    "deps": [],
+    "parent": null
+  },
+  {
+    "id": 74,
+    "title": "Implement task filtering and search in kanban view with regex support",
+    "status": "todo",
+    "priority": "high",
+    "deps": [],
+    "parent": null
+  },
+  {
+    "id": 75,
+    "title": "Create project initialization script that scaffolds taskwrapper in new repositories",
+    "status": "pending_review",
+    "priority": "high",
     "deps": [],
     "parent": null
   }
