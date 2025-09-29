@@ -180,6 +180,7 @@ type App struct {
 	terminalService TerminalServiceInterface
 	agentService    AgentServiceInterface
 	configService   ConfigServiceInterface
+	aiService       *AIService
 	logger          Logger
 	errorHandler    *ErrorHandler
 }
@@ -218,12 +219,14 @@ func NewApp() *App {
 	terminalService := NewTerminalService(logger, securityConfig.AllowedOrigins)
 	
 	agentService := NewAgentService(activeRepo.Path, logger)
-	
+	aiService := NewAIService(logger)
+
 	app := &App{
 		taskService:     taskService,
 		terminalService: terminalService,
 		agentService:    agentService,
 		configService:   configService,
+		aiService:       aiService,
 		logger:          logger,
 		errorHandler:    NewErrorHandler(logger),
 	}
@@ -250,12 +253,14 @@ func newAppWithoutConfig(logger Logger) *App {
 	terminalService := NewTerminalService(logger, securityConfig.AllowedOrigins)
 	
 	agentService := NewAgentService(repo.Path, logger)
-	
+	aiService := NewAIService(logger)
+
 	app := &App{
 		taskService:     taskService,
 		terminalService: terminalService,
 		agentService:    agentService,
 		configService:   nil, // No config service in fallback mode
+		aiService:       aiService,
 		logger:          logger,
 		errorHandler:    NewErrorHandler(logger),
 	}
@@ -487,6 +492,80 @@ func (a *App) SavePlan(content string) error {
 	}
 
 	a.logger.Info("Plan saved successfully")
+	return nil
+}
+
+// SuggestTasks uses AI to suggest new tasks based on plan and existing tasks
+func (a *App) SuggestTasks(guidance string) ([]SuggestedTask, error) {
+	if guidance != "" {
+		a.logger.InfoWithFields("Generating task suggestions", map[string]interface{}{
+			"guidance": guidance,
+		})
+	} else {
+		a.logger.Info("Generating task suggestions")
+	}
+
+	// Load current plan
+	planContent, err := a.LoadPlan()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load plan: %w", err)
+	}
+
+	// Get existing tasks
+	tasks := a.taskService.GetTasks()
+
+	// Use AI service to generate suggestions
+	suggestions, err := a.aiService.SuggestTasks(planContent, tasks, guidance)
+	if err != nil {
+		return nil, err
+	}
+
+	return suggestions, nil
+}
+
+// AddSuggestedTasks adds approved suggested tasks to the task list
+func (a *App) AddSuggestedTasks(suggestions []SuggestedTask) error {
+	a.logger.InfoWithFields("Adding suggested tasks", map[string]interface{}{
+		"count": len(suggestions),
+	})
+
+	// Get existing tasks
+	tasks := a.taskService.GetTasks()
+
+	// Find max ID
+	maxID := 0
+	for _, task := range tasks {
+		if task.ID > maxID {
+			maxID = task.ID
+		}
+	}
+
+	// Add new tasks with auto-incremented IDs
+	for i, suggestion := range suggestions {
+		priority, err := ParseTaskPriority(suggestion.Priority)
+		if err != nil {
+			a.logger.Error("Invalid priority in suggestion, defaulting to medium", err)
+			priority = PriorityMedium
+		}
+
+		newTask := Task{
+			ID:       maxID + i + 1,
+			Title:    suggestion.Title,
+			Status:   StatusTodo,
+			Priority: priority,
+			Deps:     []int{},
+			Parent:   nil,
+		}
+
+		tasks = append(tasks, newTask)
+	}
+
+	// Save updated tasks
+	if err := a.taskService.SaveTasks(tasks); err != nil {
+		return fmt.Errorf("failed to save tasks: %w", err)
+	}
+
+	a.logger.Info("Suggested tasks added successfully")
 	return nil
 }
 

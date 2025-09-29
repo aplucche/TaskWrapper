@@ -6,6 +6,10 @@ export function AddRepository(arg1, arg2) {
   return window['go']['main']['App']['AddRepository'](arg1, arg2);
 }
 
+export function AddSuggestedTasks(arg1) {
+  return window['go']['main']['App']['AddSuggestedTasks'](arg1);
+}
+
 export function ApproveTask(arg1) {
   return window['go']['main']['App']['ApproveTask'](arg1);
 }
@@ -68,6 +72,10 @@ export function SetActiveRepository(arg1) {
 
 export function StartTerminalSession() {
   return window['go']['main']['App']['StartTerminalSession']();
+}
+
+export function SuggestTasks(arg1) {
+  return window['go']['main']['App']['SuggestTasks'](arg1);
 }
 
 export function UpdateTask(arg1) {

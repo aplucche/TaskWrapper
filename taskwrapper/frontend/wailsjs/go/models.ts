@@ -178,6 +178,22 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class SuggestedTask {
+	    title: string;
+	    priority: string;
+	    reason: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SuggestedTask(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.title = source["title"];
+	        this.priority = source["priority"];
+	        this.reason = source["reason"];
+	    }
+	}
 	export class Task {
 	    id: number;
 	    title: string;

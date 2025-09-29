@@ -4,6 +4,8 @@ import {main} from '../models';
 
 export function AddRepository(arg1:string,arg2:string):Promise<main.Repository>;
 
+export function AddSuggestedTasks(arg1:Array<main.SuggestedTask>):Promise<void>;
+
 export function ApproveTask(arg1:number):Promise<void>;
 
 export function FindRepositories(arg1:string):Promise<Array<main.Repository>>;
@@ -35,6 +37,8 @@ export function SaveTasks(arg1:Array<main.Task>):Promise<void>;
 export function SetActiveRepository(arg1:string):Promise<void>;
 
 export function StartTerminalSession():Promise<string>;
+
+export function SuggestTasks(arg1:string):Promise<Array<main.SuggestedTask>>;
 
 export function UpdateTask(arg1:main.Task):Promise<void>;
 
